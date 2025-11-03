@@ -17,6 +17,8 @@ Install requirements:
 ```
 pip3 install flask 
 pip3 install cryptography
+pip3 install PyQt6
+
 ```
 Run code:
 ```
