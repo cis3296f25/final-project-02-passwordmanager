@@ -3,6 +3,7 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtGui import QFont
 import sys
+import apiCallerMethods
 from colors import Colors
 
 
@@ -24,13 +25,13 @@ class MainWindow(QMainWindow):
         central.setLayout(layout)
 
         # label
-        label = QLabel(" - Offline Password Manager - \nlets come up with a more fun name for this :)")
-        label.setFont(QFont("Segoe UI", 14))
-        label.setStyleSheet(f"color: {Colors.WHITE};")
-        layout.addWidget(label)
+        self.label = QLabel("Offline Password Manager\nlets come up with a more fun name for this :)", self)
+        self.label.setFont(QFont("Segoe UI", 14))
+        self.label.setStyleSheet(f"color: {Colors.WHITE};")
+        layout.addWidget(self.label)
 
         # buttons
-        generic_button = QPushButton("Generic Button")
+        test_button = QPushButton("Test Button")
         exit_button = QPushButton("Exit")
 
         # button styling
@@ -45,19 +46,29 @@ class MainWindow(QMainWindow):
                 background-color: {Colors.BRAT_GREEN_BUTTON_HOVER};
             }}
         """
-        generic_button.setStyleSheet(button_style)
+        test_button.setStyleSheet(button_style)
         exit_button.setStyleSheet(button_style)
 
         # add buttons to layout
-        layout.addWidget(generic_button)
+        layout.addWidget(test_button)
         layout.addWidget(exit_button)
 
         # connect buttons to actions
-        generic_button.clicked.connect(self.print_button_clicked)
+        test_button.clicked.connect(self.test_button_clicked)
         exit_button.clicked.connect(self.close)
 
-    def print_button_clicked(self):
-        print("button clicked")
+    def test_button_clicked(self):
+        test_site = "example.com"
+        test_user = "alice"
+        test_pass = apiCallerMethods.get_new_generated_password()
+        test_pass = test_pass["password"]
+
+        apiCallerMethods.add_credential(test_site, test_user, test_pass)
+
+        credentials = apiCallerMethods.get_credential(test_site)
+        credentials = f"User: {credentials["username"]}\nPassword: {credentials["password"]}"
+        self.label.setText(credentials)
+
 
 
 # run

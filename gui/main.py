@@ -1,4 +1,5 @@
 import requests
+from gui import MainWindow
 
 #####
 # Skeleton for what will eventually be the GUI. For now, makes basic calls 
@@ -33,6 +34,7 @@ def delete_credential(site):
     return response.json()
 
 if __name__ == "__main__":
+    MainWindow = MainWindow()
     test_site = "example.com"
     test_user = "alice"
     test_pass = get_new_generated_password()
