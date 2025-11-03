@@ -69,10 +69,8 @@ class MainWindow(QMainWindow):
         credentials = f"User: {credentials["username"]}\nPassword: {credentials["password"]}"
         self.label.setText(credentials)
 
-
-
-# run
-app = QApplication(sys.argv)
-window = MainWindow()
-window.show()
-app.exec()
+    def run():
+        app = QApplication(sys.argv)
+        window = MainWindow()
+        window.show()
+        app.exec()

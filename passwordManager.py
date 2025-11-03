@@ -31,6 +31,7 @@ conn.commit()
 
 # Flask API
 app = Flask(__name__)
+app.debug = False
 vault_locked = False
 
 # POST methods ###########################################################################
