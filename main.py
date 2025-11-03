@@ -1,9 +1,14 @@
 import requests
+import threading
+import time
+from passwordManager import app
 
 #####
 # Skeleton for what will eventually be the GUI. For now, makes basic calls 
 # to the API (assuming it's already running on http://127.0.0.1:5000)
 #####
+threading.Thread(target=app.run, kwargs={'port': 5000}, daemon=True).start()
+time.sleep(1)
 
 BASE_URL = "http://127.0.0.1:5000"
 BASE_ROUTE = "credentials"
