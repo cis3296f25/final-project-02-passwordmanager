@@ -103,10 +103,17 @@ def delete_credential(site):
     global vault_locked
     if vault_locked:
         return jsonify({"error": "Vault is locked"}), 423
-
+    
+    c.execute("SELECT username, password FROM credentials WHERE site = ?", (site,))
+    row = c.fetchone()
+    if not row:
+        return jsonify({"error": "not found"})
+    
+    username, encrypted_password = row
+    password = cipher.decrypt(encrypted_password).decode()
     c.execute("DELETE FROM credentials WHERE site = ?", (site,))
     conn.commit()
-    return jsonify({"status": "deleted"})
+    return jsonify({"site": site, "username": username, "password": password})
 
 # PUT methods #########################################################################
 # Update password for a site
