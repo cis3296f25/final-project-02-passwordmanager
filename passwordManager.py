@@ -3,6 +3,8 @@ from flask import Flask, request, jsonify
 from cryptography.fernet import Fernet
 import secrets
 import os
+import string
+import random
 
 # Persistent key
 KEY_FILE = "vault.key"
@@ -59,34 +61,33 @@ def delete_credential(site):
     row = c.fetchone()
     if not row: 
         return jsonify({"error": "not found"})
-    username, encrypted_password = row
-    password = cipher.decrypt(encrypted_password).decode()
     c.execute("DELETE FROM credentials WHERE site = ?", (site,))
     conn.commit()
-    return jsonify({"site": site, "username": username, "password": password})
+    return jsonify({"status": "deleted"}), 200
 
 # Password generator
 def generate_password(length=12):
-    chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()"
-    return ''.join(secrets.choice(chars) for _ in range(length))
+    lower = string.ascii_lowercase
+    upper = string.ascii_uppercase
+    digits = string.digits
+    symbols = "!@#$%^&*()"
 
-# Test and run
+    if length < 4:
+        length = 4
+
+    # Ensure at least one of each category
+    required = [
+        secrets.choice(lower),
+        secrets.choice(upper),
+        secrets.choice(digits),
+        secrets.choice(symbols),
+    ]
+    allchars = lower + upper + digits + symbols
+    remaining = [secrets.choice(allchars) for _ in range(length - len(required))]
+    pw_list = required + remaining
+    random.SystemRandom().shuffle(pw_list)
+    return "".join(pw_list)
+
+# Run server
 if __name__ == "__main__":
-    # Example test credential
-    test_site = "example.com"
-    test_user = "alice"
-    test_pass = generate_password()
-    print(f"Generated password for {test_user}@{test_site}: {test_pass}")
-
-    with app.test_client() as client:
-        client.post("/add", json={"site": test_site, "username": test_user, "password": test_pass})
-        client.post("/add", json={"site": "github.com", "username": "markZuck", "password": test_pass})
-        res = client.get(f"/get/{test_site}")
-        res2 = client.get(f"/get/{'github.com'}")
-        print("Retrieved from vault:", res.json, res2.json)
-
-        deleted_resp = client.delete(f"/delete/{test_site}")
-        print("Deleted site:", deleted_resp.json)
-        
-    # Run server
     app.run(port=5000)
