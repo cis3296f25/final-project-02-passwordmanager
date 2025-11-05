@@ -3,6 +3,7 @@ from flask import Flask, request, jsonify
 from cryptography.fernet import Fernet
 import secrets
 import os
+import random
 
 # Database stuff (to be refactored into repository later) #################################
 KEY_FILE = "vault.key"
@@ -28,6 +29,27 @@ CREATE TABLE IF NOT EXISTS credentials (
 """)
 conn.commit()
 ###################################################################################
+
+def generate_password_str(length: int = 12) -> str:
+    lower = string.ascii_lowercase
+    upper = string.ascii_uppercase
+    digits = string.digits
+    symbols = "!@#$%^&*()"
+
+    if length < 4:
+        length = 4
+
+    required = [
+        secrets.choice(lower),
+        secrets.choice(upper),
+        secrets.choice(digits),
+        secrets.choice(symbols),
+    ]
+    allchars = lower + upper + digits + symbols
+    remaining = [secrets.choice(allchars) for _ in range(length - len(required))]
+    pw_list = required + remaining
+    random.SystemRandom().shuffle(pw_list)
+    return "".join(pw_list)
 
 # Flask API
 app = Flask(__name__)
@@ -86,10 +108,10 @@ def get_credential(site):
 
 # Password generator
 @app.route("/get/generated-password", methods=["GET"])
-def generate_password(length=12):
-    chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()"
-    password = ''.join(secrets.choice(chars) for _ in range(length))
-    return jsonify({"password": password})
+def generate_password():
+    # optional: allow ?length=20
+    length = int(request.args.get("length", 12))
+    return jsonify({"password": generate_password_str(length)})
 
 # List all stored credentials
 @app.route("/list", methods=["GET"])
