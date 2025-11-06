@@ -212,9 +212,9 @@ if __name__ == "__main__":
     print(f"Generated password for {test_user}@{test_site}: {test_pass}")
 
     with app.test_client() as client:
-        create_resp = client.post("/account/create", json={"username": "demo", "master_password": "CorrectHorseBatteryStaple"})
+        create_resp = client.post("/account/create", json={"username": "test", "master_password": "test"})
         print("/account/create:", create_resp.status_code, create_resp.json)
-        login_resp = client.post("/account/login", json={"username": "demo", "master_password": "CorrectHorseBatteryStaple"})
+        login_resp = client.post("/account/login", json={"username": "test", "master_password": "test"})
         print("/account/login:", login_resp.status_code, login_resp.json)
 
         client.post("/add", json={"site": test_site, "username": test_user, "password": test_pass})
