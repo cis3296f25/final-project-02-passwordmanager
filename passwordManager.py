@@ -5,6 +5,7 @@ import secrets
 import os
 import json
 from kdf import derive_wrap_key, default_kdf_params
+from vmk import generate_vmk, wrap_vmk, unwrap_vmk
 
 # Database stuff (to be refactored into repository later) #################################
 KEY_FILE = "vault.key"
@@ -47,18 +48,8 @@ app.debug = False
 # Locked until a successful login
 vault_locked = True
 current_user = None
+# Keeping this for now pending testing
 current_vmk_cipher = None  # Fernet instance constructed with decrypted VMK for the session
-
-## KDF helpers moved to kdf.py ###########################################################
-
-def generate_vmk() -> bytes:
-    return Fernet.generate_key()
-
-def wrap_vmk(wrap_key: bytes, vmk_key_b64: bytes) -> bytes:
-    return Fernet(wrap_key).encrypt(vmk_key_b64)
-
-def unwrap_vmk(wrap_key: bytes, wrapped_vmk_token: bytes) -> bytes:
-    return Fernet(wrap_key).decrypt(wrapped_vmk_token)
 
 # POST methods ###########################################################################
 @app.route("/lock", methods=["POST"])
@@ -248,7 +239,6 @@ if __name__ == "__main__":
     print(f"Generated password for {test_user}@{test_site}: {test_pass}")
 
     with app.test_client() as client:
-        # Create user and login to unlock
         create_resp = client.post("/account/create", json={"username": "demo2", "master_password": "CorrectHorseBatteryStaple"})
         print("/account/create:", create_resp.status_code, create_resp.json)
         login_resp = client.post("/account/login", json={"username": "demo2", "master_password": "CorrectHorseBatteryStaple"})
