@@ -3,9 +3,8 @@ from flask import Flask, request, jsonify
 from cryptography.fernet import Fernet
 import secrets
 import os
-import base64
 import json
-from argon2.low_level import hash_secret_raw, Type as Argon2Type
+from kdf import derive_wrap_key, default_kdf_params
 
 # Database stuff (to be refactored into repository later) #################################
 KEY_FILE = "vault.key"
@@ -50,31 +49,7 @@ vault_locked = True
 current_user = None
 current_vmk_cipher = None  # Fernet instance constructed with decrypted VMK for the session
 
-# KDF helpers ###########################################################################
-def _default_kdf_params():
-    return {
-        "time_cost": 3,
-        "memory_cost": 65536,  # 64 MiB
-        "parallelism": 2,
-        "hash_len": 32,
-        "version": 19,
-        "type": "argon2id",
-    }
-
-def derive_wrap_key(master_password: str, salt: bytes, params: dict | None = None) -> bytes:
-    cfg = {**_default_kdf_params(), **(params or {})}
-    dk = hash_secret_raw(
-        secret=master_password.encode("utf-8"),
-        salt=salt,
-        time_cost=cfg["time_cost"],
-        memory_cost=cfg["memory_cost"],
-        parallelism=cfg["parallelism"],
-        hash_len=cfg["hash_len"],
-        type=Argon2Type.ID,
-        version=cfg["version"],
-    )
-    # Fernet expects a urlsafe base64-encoded 32-byte key
-    return base64.urlsafe_b64encode(dk)
+## KDF helpers moved to kdf.py ###########################################################
 
 def generate_vmk() -> bytes:
     return Fernet.generate_key()
@@ -121,7 +96,7 @@ def create_account():
         return jsonify({"error": "username already exists"}), 409
 
     salt = os.urandom(16)
-    kdf_params = _default_kdf_params()
+    kdf_params = default_kdf_params()
     wrap_key = derive_wrap_key(master_password, salt, kdf_params)
 
     vmk = generate_vmk()
