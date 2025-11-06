@@ -3,6 +3,9 @@ from flask import Flask, request, jsonify
 from cryptography.fernet import Fernet
 import secrets
 import os
+import base64
+import json
+from argon2.low_level import hash_secret_raw, Type as Argon2Type
 
 # Database stuff (to be refactored into repository later) #################################
 KEY_FILE = "vault.key"
@@ -26,13 +29,61 @@ CREATE TABLE IF NOT EXISTS credentials (
     password BLOB
 )
 """)
+## New: user metadata to support per-user VMK wrapping
+c.execute("""
+CREATE TABLE IF NOT EXISTS user_metadata (
+    username TEXT PRIMARY KEY,
+    wrapped_vmk BLOB NOT NULL,
+    salt BLOB NOT NULL,
+    kdf TEXT NOT NULL,
+    kdf_params TEXT NOT NULL
+)
+""")
 conn.commit()
 ###################################################################################
 
 # Flask API
 app = Flask(__name__)
 app.debug = False
-vault_locked = False
+# Locked until a successful login
+vault_locked = True
+current_user = None
+current_vmk_cipher = None  # Fernet instance constructed with decrypted VMK for the session
+
+# KDF helpers ###########################################################################
+def _default_kdf_params():
+    return {
+        "time_cost": 3,
+        "memory_cost": 65536,  # 64 MiB
+        "parallelism": 2,
+        "hash_len": 32,
+        "version": 19,
+        "type": "argon2id",
+    }
+
+def derive_wrap_key(master_password: str, salt: bytes, params: dict | None = None) -> bytes:
+    cfg = {**_default_kdf_params(), **(params or {})}
+    dk = hash_secret_raw(
+        secret=master_password.encode("utf-8"),
+        salt=salt,
+        time_cost=cfg["time_cost"],
+        memory_cost=cfg["memory_cost"],
+        parallelism=cfg["parallelism"],
+        hash_len=cfg["hash_len"],
+        type=Argon2Type.ID,
+        version=cfg["version"],
+    )
+    # Fernet expects a urlsafe base64-encoded 32-byte key
+    return base64.urlsafe_b64encode(dk)
+
+def generate_vmk() -> bytes:
+    return Fernet.generate_key()
+
+def wrap_vmk(wrap_key: bytes, vmk_key_b64: bytes) -> bytes:
+    return Fernet(wrap_key).encrypt(vmk_key_b64)
+
+def unwrap_vmk(wrap_key: bytes, wrapped_vmk_token: bytes) -> bytes:
+    return Fernet(wrap_key).decrypt(wrapped_vmk_token)
 
 # POST methods ###########################################################################
 @app.route("/lock", methods=["POST"])
@@ -40,14 +91,96 @@ def lock_vault():
     """Lock the vault (no add/get/delete allowed until unlocked)."""
     global vault_locked
     vault_locked = True
+    # Clear session state
+    global current_user, current_vmk_cipher
+    current_user = None
+    current_vmk_cipher = None
     return jsonify({"status": "vault locked"})
 
 @app.route("/unlock", methods=["POST"])
 def unlock_vault():
     """Unlock the vault."""
     global vault_locked
+    # For backward-compat, allow manual unlock (not recommended). Prefer /account/login.
     vault_locked = False
-    return jsonify({"status": "vault unlocked"})
+    return jsonify({"status": "vault unlocked (no user session)"})
+
+
+# Account endpoints ######################################################################
+@app.route("/account/create", methods=["POST"])
+def create_account():
+    data = request.json or {}
+    username = data.get("username")
+    master_password = data.get("master_password")
+    if not username or not master_password:
+        return jsonify({"error": "missing fields"}), 400
+
+    # Prevent duplicate usernames
+    c.execute("SELECT 1 FROM user_metadata WHERE username = ?", (username,))
+    if c.fetchone():
+        return jsonify({"error": "username already exists"}), 409
+
+    salt = os.urandom(16)
+    kdf_params = _default_kdf_params()
+    wrap_key = derive_wrap_key(master_password, salt, kdf_params)
+
+    vmk = generate_vmk()
+    wrapped_vmk = wrap_vmk(wrap_key, vmk)
+
+    c.execute(
+        """
+        INSERT INTO user_metadata (username, wrapped_vmk, salt, kdf, kdf_params)
+        VALUES (?, ?, ?, ?, ?)
+        """,
+        (
+            username,
+            wrapped_vmk,
+            salt,
+            "argon2id",
+            json.dumps(kdf_params),
+        ),
+    )
+    conn.commit()
+    return jsonify({"status": "account created"}), 201
+
+
+@app.route("/account/login", methods=["POST"])
+def account_login():
+    data = request.json or {}
+    username = data.get("username")
+    master_password = data.get("master_password")
+    if not username or not master_password:
+        return jsonify({"error": "incorrect credentials"}), 401
+
+    c.execute(
+        "SELECT wrapped_vmk, salt, kdf, kdf_params FROM user_metadata WHERE username = ?",
+        (username,),
+    )
+    row = c.fetchone()
+    if not row:
+        # Generic to prevent enumeration
+        return jsonify({"error": "incorrect credentials"}), 401
+
+    wrapped_vmk, salt, kdf_name, kdf_params_json = row
+    try:
+        params = json.loads(kdf_params_json)
+        wrap_key = derive_wrap_key(master_password, salt, params)
+        vmk = unwrap_vmk(wrap_key, wrapped_vmk)
+    except Exception:
+        return jsonify({"error": "incorrect credentials"}), 401
+
+    # Establish session
+    global vault_locked, current_user, current_vmk_cipher
+    vault_locked = False
+    current_user = username
+    current_vmk_cipher = Fernet(vmk)
+    return jsonify({"status": "logged in"})
+
+
+@app.route("/account/logout", methods=["POST"])
+def account_logout():
+    # Reuse lock semantics
+    return lock_vault()
 
 @app.route("/add", methods=["POST"])
 def add_credential():
@@ -68,7 +201,11 @@ def add_credential():
 @app.route("/status", methods=["GET"])
 def vault_status():
     """Check current vault state."""
-    return jsonify({"vault_locked": vault_locked})
+    return jsonify({
+        "vault_locked": vault_locked,
+        "current_user": current_user,
+        "session": "active" if (not vault_locked and current_user) else "none",
+    })
 
 @app.route("/get/<site>", methods=["GET"])
 def get_credential(site):
@@ -136,6 +273,12 @@ if __name__ == "__main__":
     print(f"Generated password for {test_user}@{test_site}: {test_pass}")
 
     with app.test_client() as client:
+        # Create user and login to unlock
+        create_resp = client.post("/account/create", json={"username": "demo2", "master_password": "CorrectHorseBatteryStaple"})
+        print("/account/create:", create_resp.status_code, create_resp.json)
+        login_resp = client.post("/account/login", json={"username": "demo2", "master_password": "CorrectHorseBatteryStaple"})
+        print("/account/login:", login_resp.status_code, login_resp.json)
+
         client.post("/add", json={"site": test_site, "username": test_user, "password": test_pass})
         client.post("/add", json={"site": "github.com", "username": "markZuck", "password": test_pass})
         res = client.get(f"/get/{test_site}")
