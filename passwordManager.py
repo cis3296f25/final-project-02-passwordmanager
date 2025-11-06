@@ -89,4 +89,4 @@ if __name__ == "__main__":
         print("Deleted site:", deleted_resp.json)
         
     # Run server
-    app.run(port=5000)
+    app.run(port=5000) # Comment just for push
