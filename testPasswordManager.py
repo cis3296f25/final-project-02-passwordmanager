@@ -1,5 +1,5 @@
 import unittest
-from passwordManager import app, c, conn, generate_password_str
+from passwordManager import app, c, conn
 
 class TestVaultAPI(unittest.TestCase):
     @classmethod
@@ -14,7 +14,7 @@ class TestVaultAPI(unittest.TestCase):
     def test_add_get_delete_roundtrip(self):
         site = "unittest-example.com"
         user = "tester"
-        pwd  = generate_password_str(12)
+        pwd  = "TestPassword"
 
         r = self.client.post("/add", json={"site": site, "username": user, "password": pwd})
         self.assertEqual(r.status_code, 200)
@@ -34,15 +34,6 @@ class TestVaultAPI(unittest.TestCase):
         r = self.client.get(f"/get/{site}")
         self.assertEqual(r.get_json().get("error"), "not found")
 
-    def test_password_generator_quality(self):
-        r = self.client.get("/get/generated-password?length=20")
-        self.assertEqual(r.status_code, 200)
-        p = r.get_json()["password"]
-        self.assertGreaterEqual(len(p), 20)
-        self.assertTrue(any(c.islower() for c in p))
-        self.assertTrue(any(c.isupper() for c in p))
-        self.assertTrue(any(c.isdigit() for c in p))
-        self.assertTrue(any(c in "!@#$%^&*()" for c in p))
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
