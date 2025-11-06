@@ -1,11 +1,12 @@
+import json
 import sqlite3
 from flask import Flask, request, jsonify
 from cryptography.fernet import Fernet
 import secrets
 import os
-import json
-from kdf import derive_wrap_key, default_kdf_params
-from vmk import generate_vmk, wrap_vmk, unwrap_vmk
+
+from kdf import default_kdf_params, derive_wrap_key
+from vmk import generate_vmk, unwrap_vmk, wrap_vmk
 
 # Database stuff (to be refactored into repository later) #################################
 KEY_FILE = "vault.key"
@@ -29,27 +30,13 @@ CREATE TABLE IF NOT EXISTS credentials (
     password BLOB
 )
 """)
-## New: user metadata to support per-user VMK wrapping
-c.execute("""
-CREATE TABLE IF NOT EXISTS user_metadata (
-    username TEXT PRIMARY KEY,
-    wrapped_vmk BLOB NOT NULL,
-    salt BLOB NOT NULL,
-    kdf TEXT NOT NULL,
-    kdf_params TEXT NOT NULL
-)
-""")
 conn.commit()
 ###################################################################################
 
 # Flask API
 app = Flask(__name__)
 app.debug = False
-# Locked until a successful login
-vault_locked = True
-current_user = None
-# Keeping this for now pending testing
-current_vmk_cipher = None  # Fernet instance constructed with decrypted VMK for the session
+vault_locked = False
 
 # POST methods ###########################################################################
 @app.route("/lock", methods=["POST"])
@@ -57,96 +44,14 @@ def lock_vault():
     """Lock the vault (no add/get/delete allowed until unlocked)."""
     global vault_locked
     vault_locked = True
-    # Clear session state
-    global current_user, current_vmk_cipher
-    current_user = None
-    current_vmk_cipher = None
     return jsonify({"status": "vault locked"})
 
 @app.route("/unlock", methods=["POST"])
 def unlock_vault():
     """Unlock the vault."""
     global vault_locked
-    # For backward-compat, allow manual unlock (not recommended). Prefer /account/login.
     vault_locked = False
-    return jsonify({"status": "vault unlocked (no user session)"})
-
-
-# Account endpoints ######################################################################
-@app.route("/account/create", methods=["POST"])
-def create_account():
-    data = request.json or {}
-    username = data.get("username")
-    master_password = data.get("master_password")
-    if not username or not master_password:
-        return jsonify({"error": "missing fields"}), 400
-
-    # Prevent duplicate usernames
-    c.execute("SELECT 1 FROM user_metadata WHERE username = ?", (username,))
-    if c.fetchone():
-        return jsonify({"error": "username already exists"}), 409
-
-    salt = os.urandom(16)
-    kdf_params = default_kdf_params()
-    wrap_key = derive_wrap_key(master_password, salt, kdf_params)
-
-    vmk = generate_vmk()
-    wrapped_vmk = wrap_vmk(wrap_key, vmk)
-
-    c.execute(
-        """
-        INSERT INTO user_metadata (username, wrapped_vmk, salt, kdf, kdf_params)
-        VALUES (?, ?, ?, ?, ?)
-        """,
-        (
-            username,
-            wrapped_vmk,
-            salt,
-            "argon2id",
-            json.dumps(kdf_params),
-        ),
-    )
-    conn.commit()
-    return jsonify({"status": "account created"}), 201
-
-
-@app.route("/account/login", methods=["POST"])
-def account_login():
-    data = request.json or {}
-    username = data.get("username")
-    master_password = data.get("master_password")
-    if not username or not master_password:
-        return jsonify({"error": "incorrect credentials"}), 401
-
-    c.execute(
-        "SELECT wrapped_vmk, salt, kdf, kdf_params FROM user_metadata WHERE username = ?",
-        (username,),
-    )
-    row = c.fetchone()
-    if not row:
-        # Generic to prevent enumeration
-        return jsonify({"error": "incorrect credentials"}), 401
-
-    wrapped_vmk, salt, kdf_name, kdf_params_json = row
-    try:
-        params = json.loads(kdf_params_json)
-        wrap_key = derive_wrap_key(master_password, salt, params)
-        vmk = unwrap_vmk(wrap_key, wrapped_vmk)
-    except Exception:
-        return jsonify({"error": "incorrect credentials"}), 401
-
-    # Establish session
-    global vault_locked, current_user, current_vmk_cipher
-    vault_locked = False
-    current_user = username
-    current_vmk_cipher = Fernet(vmk)
-    return jsonify({"status": "logged in"})
-
-
-@app.route("/account/logout", methods=["POST"])
-def account_logout():
-    # Reuse lock semantics
-    return lock_vault()
+    return jsonify({"status": "vault unlocked"})
 
 @app.route("/add", methods=["POST"])
 def add_credential():
@@ -167,11 +72,7 @@ def add_credential():
 @app.route("/status", methods=["GET"])
 def vault_status():
     """Check current vault state."""
-    return jsonify({
-        "vault_locked": vault_locked,
-        "current_user": current_user,
-        "session": "active" if (not vault_locked and current_user) else "none",
-    })
+    return jsonify({"vault_locked": vault_locked})
 
 @app.route("/get/<site>", methods=["GET"])
 def get_credential(site):
@@ -229,6 +130,78 @@ def update_password():
     conn.commit()
     return jsonify({"status": "updated", "site": data["site"]})
 
+# Account methods ######################################################################
+@app.route("/account/create", methods=["POST"])
+def create_account():
+    data = request.json or {}
+    username = data.get("username")
+    master_password = data.get("master_password")
+    if not username or not master_password:
+        return jsonify({"error": "missing fields"}), 400
+
+    # Prevent duplicate usernames
+    c.execute("SELECT 1 FROM user_metadata WHERE username = ?", (username,))
+    if c.fetchone():
+        return jsonify({"error": "username already exists"}), 409
+
+    salt = os.urandom(16)
+    kdf_params = default_kdf_params()
+    wrap_key = derive_wrap_key(master_password, salt, kdf_params)
+
+    vmk = generate_vmk()
+    wrapped_vmk = wrap_vmk(wrap_key, vmk)
+
+    c.execute(
+        """
+        INSERT INTO user_metadata (username, wrapped_vmk, salt, kdf, kdf_params)
+        VALUES (?, ?, ?, ?, ?)
+        """,
+        (
+            username,
+            wrapped_vmk,
+            salt,
+            "argon2id",
+            json.dumps(kdf_params),
+        ),
+    )
+    conn.commit()
+    return jsonify({"status": "account created"}), 201
+
+
+@app.route("/account/login", methods=["POST"])
+def account_login():
+    data = request.json or {}
+    username = data.get("username")
+    master_password = data.get("master_password")
+    if not username or not master_password:
+        return jsonify({"error": "incorrect credentials"}), 401
+
+    c.execute(
+        "SELECT wrapped_vmk, salt, kdf, kdf_params FROM user_metadata WHERE username = ?",
+        (username,),
+    )
+    row = c.fetchone()
+    if not row:
+        return jsonify({"error": "incorrect credentials"}), 401
+
+    wrapped_vmk, salt, kdf_name, kdf_params_json = row
+    try:
+        params = json.loads(kdf_params_json)
+        wrap_key = derive_wrap_key(master_password, salt, params)
+        vmk = unwrap_vmk(wrap_key, wrapped_vmk)
+    except Exception:
+        return jsonify({"error": "incorrect credentials"}), 401
+
+    global vault_locked, current_user, current_vmk_cipher
+    vault_locked = False
+    current_user = username
+    current_vmk_cipher = Fernet(vmk)
+    return jsonify({"status": "logged in"})
+
+
+@app.route("/account/logout", methods=["POST"])
+def account_logout():
+    return lock_vault()
 
 # Test and run
 if __name__ == "__main__":
@@ -239,9 +212,9 @@ if __name__ == "__main__":
     print(f"Generated password for {test_user}@{test_site}: {test_pass}")
 
     with app.test_client() as client:
-        create_resp = client.post("/account/create", json={"username": "demo2", "master_password": "CorrectHorseBatteryStaple"})
+        create_resp = client.post("/account/create", json={"username": "demo", "master_password": "CorrectHorseBatteryStaple"})
         print("/account/create:", create_resp.status_code, create_resp.json)
-        login_resp = client.post("/account/login", json={"username": "demo2", "master_password": "CorrectHorseBatteryStaple"})
+        login_resp = client.post("/account/login", json={"username": "demo", "master_password": "CorrectHorseBatteryStaple"})
         print("/account/login:", login_resp.status_code, login_resp.json)
 
         client.post("/add", json={"site": test_site, "username": test_user, "password": test_pass})
