@@ -30,6 +30,15 @@ CREATE TABLE IF NOT EXISTS credentials (
     password BLOB
 )
 """)
+c.execute("""
+CREATE TABLE IF NOT EXISTS user_metadata (
+    username TEXT PRIMARY KEY,
+    wrapped_vmk BLOB NOT NULL,
+    salt BLOB NOT NULL,
+    kdf TEXT NOT NULL,
+    kdf_params TEXT NOT NULL
+)
+""")
 conn.commit()
 ###################################################################################
 
