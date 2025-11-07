@@ -6,6 +6,7 @@ from PyQt6.QtGui import QFont
 import sys
 import apiCallerMethods
 from colors import Colors
+from credentialListWidget import CredentialsListWidget
 
 
 class AddCredentialsDialog(QDialog):
@@ -15,7 +16,7 @@ class AddCredentialsDialog(QDialog):
         # Window setup
         self.setWindowTitle("Add New Credential")
         self.setStyleSheet(f"background-color: {Colors.DARK_GREY}; color: {Colors.WHITE};")
-        self.setMinimumWidth(300)
+        self.setMinimumWidth(500)
 
         # Main layout
         layout = QVBoxLayout()
@@ -105,11 +106,9 @@ class MainWindow(QMainWindow):
         layout = QVBoxLayout()
         central.setLayout(layout)
 
-        # label
-        self.label = QLabel("Offline Password Manager\nlets come up with a more fun name for this :)", self)
-        self.label.setFont(QFont("Segoe UI", 14))
-        self.label.setStyleSheet(f"color: {Colors.WHITE};")
-        layout.addWidget(self.label)
+        # Credentials list widget
+        self.credentials_list = CredentialsListWidget()
+        layout.addWidget(self.credentials_list)
 
         # buttons
         add_button = QPushButton("Add New Credential")
@@ -141,6 +140,10 @@ class MainWindow(QMainWindow):
     def open_add_dialog(self):
         dialog = AddCredentialsDialog()
         dialog.exec()
+        self.refresh_credentials()
+
+    def refresh_credentials(self):
+        self.credentials_list.load_credentials()
 
     # Run the app
     @staticmethod
@@ -148,4 +151,5 @@ class MainWindow(QMainWindow):
         app = QApplication(sys.argv)
         window = MainWindow()
         window.show()
+        window.refresh_credentials()
         app.exec()

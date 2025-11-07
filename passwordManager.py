@@ -94,9 +94,9 @@ def generate_password(length=12):
 # List all stored credentials
 @app.route("/list", methods=["GET"])
 def list_credentials():
-    c.execute("SELECT site, username FROM credentials")
+    c.execute("SELECT site, username, password FROM credentials")
     rows = c.fetchall()
-    return jsonify([{"site": site, "username": username} for site, username in rows])
+    return jsonify([{"site": site, "username": username, "password": cipher.decrypt(password).decode()} for site, username, password in rows])
 
 # DELETE methods #############################################################################
 @app.route("/delete/<site>", methods=["DELETE"])
