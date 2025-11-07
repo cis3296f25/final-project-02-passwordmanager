@@ -16,7 +16,7 @@ class AddCredentialsDialog(QDialog):
         # Window setup
         self.setWindowTitle("Add New Credential")
         self.setStyleSheet(f"background-color: {Colors.DARK_GREY}; color: {Colors.WHITE};")
-        self.setMinimumWidth(500)
+        self.setMinimumWidth(300)
 
         # Main layout
         layout = QVBoxLayout()
@@ -95,7 +95,10 @@ class MainWindow(QMainWindow):
 
         # set window
         self.setWindowTitle("Offline Password Manager")
-        self.setGeometry(200, 200, 400, 300)  # x, y, width, height
+        self.setGeometry(200, 200, 475, 400)  # x, y, width, height
+        self.setMinimumWidth(475)
+        self.setMinimumHeight(400)
+
         self.setStyleSheet(f"background-color: {Colors.DARK_GREY};")
 
         # set central widget (similar to panels in jpanel)

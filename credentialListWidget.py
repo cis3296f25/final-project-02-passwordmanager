@@ -63,7 +63,7 @@ class CredentialsListWidget(QWidget):
         password = QLabel("••••••••")
 
         for label in (site, username, password):
-            label.setStyleSheet(f"color: {Colors.WHITE}; font-size: 14px;")
+            label.setStyleSheet(f"color: {Colors.WHITE}; font-size: 12px;")
 
         copy_button = QPushButton("Copy Password")
         copy_button.setStyleSheet(f"""
@@ -81,7 +81,7 @@ class CredentialsListWidget(QWidget):
 
         button_layout = QHBoxLayout()
         button_layout.addWidget(copy_button)
-        button_layout.addStretch()
+        # button_layout.addStretch()
 
         card_layout.addWidget(site)
         card_layout.addWidget(username)
