@@ -107,9 +107,25 @@ def generate_password(length=12):
 # List all stored credentials
 @app.route("/list", methods=["GET"])
 def list_credentials():
-    c.execute("SELECT site, username FROM credentials")
+    global vault_locked
+    if vault_locked:
+        return jsonify({"error": "Vault is locked"}), 423
+    
+    # selects all columns
+    c.execute("SELECT site, username, password FROM credentials")
     rows = c.fetchall()
-    return jsonify([{"site": site, "username": username} for site, username in rows])
+
+    credentials_list = []
+    for site, username, encrypted_password in rows:
+        try:
+            # decrypt pw for display
+            password = cipher.decrypt(encrypted_password).decode()
+            credentials_list.append({"site": site, "username": username, "password": password})
+        except Exception:
+            # if a pw fails to decrypt
+            credentials_list.append({"site": site, "username": username, "password": "!!DECRYPTION ERROR!!"})
+    return jsonify(credentials_list)
+
 
 # DELETE methods #############################################################################
 @app.route("/delete/<site>", methods=["DELETE"])
