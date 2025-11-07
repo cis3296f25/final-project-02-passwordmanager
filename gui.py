@@ -2,7 +2,7 @@ from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QPushButton, QWidget, QVBoxLayout, QLabel,
     QDialog, QLineEdit, QFormLayout, QHBoxLayout
 )
-from PyQt6.QtGui import QFont
+from PyQt6.QtGui import QFont, QIcon
 import sys
 import apiCallerMethods
 from colors import Colors
@@ -15,6 +15,7 @@ class MainWindow(QMainWindow):
 
         # set window
         self.setWindowTitle("Offline Password Manager")
+        self.setWindowIcon(QIcon("resources\windowIcon.png"))
         self.setGeometry(200, 200, 475, 400)  # x, y, width, height
         self.setMinimumWidth(475)
         self.setMinimumHeight(400)
