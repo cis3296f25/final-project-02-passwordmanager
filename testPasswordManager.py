@@ -6,6 +6,12 @@ class TestVaultAPI(unittest.TestCase):
     def setUpClass(cls):
         app.config["TESTING"] = True
         cls.client = app.test_client()
+        # Ensure an account exists and we are logged in
+        username = "unittest-user"
+        master_password = "unittest-pass"
+        resp = cls.client.post("/account/create", json={"username": username, "master_password": master_password})
+        # ignore duplicate username error
+        cls.client.post("/account/login", json={"username": username, "master_password": master_password})
 
     def tearDown(self):
         c.execute("DELETE FROM credentials WHERE site LIKE 'unittest-%'")
