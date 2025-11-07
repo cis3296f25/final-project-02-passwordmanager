@@ -13,24 +13,23 @@ class CredentialsListWidget(QWidget):
     def __init__(self):
         super().__init__()
 
-        # Outer layout
+        # outer layout
         layout = QVBoxLayout(self)
 
-        # Scroll area
+        # scrollable area
         self.scroll_area = QScrollArea()
         self.scroll_area.setWidgetResizable(True)
         self.scroll_area.setStyleSheet("border: none;")
         layout.addWidget(self.scroll_area)
 
-        # Inner container inside scroll area
+        # inner rectangular container for credentials cards
         self.credentials_container = QWidget()
         self.credentials_layout = QVBoxLayout(self.credentials_container)
         self.credentials_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
         self.scroll_area.setWidget(self.credentials_container)
 
-    # Load all credentials
     def load_credentials(self):
-        # Clear previous cards
+        # clear all previous cards
         for i in reversed(range(self.credentials_layout.count())):
             widget = self.credentials_layout.itemAt(i).widget()
             if widget:
@@ -52,17 +51,19 @@ class CredentialsListWidget(QWidget):
             error_label.setStyleSheet(f"color: {Colors.WHITE};")
             self.credentials_layout.addWidget(error_label)
 
-    # Create a visual card for one credential
+    # create a rectangular card for one credential
     def add_credential_card(self, cred):
         card = QWidget()
         card.setFixedHeight(50)
         card_layout = QHBoxLayout(card)
         card_layout.setContentsMargins(10, 10, 10, 10)
 
+        # display for website, username, ••••••••
         site = QLabel(f"{cred['site']}")
         username = QLabel(f"{cred['username']}")
         password = QLabel("••••••••")
 
+        # font
         for label in (site, username, password):
             label.setStyleSheet(f"color: {Colors.WHITE}; font-size: 12px;")
 
@@ -96,11 +97,10 @@ class CredentialsListWidget(QWidget):
 
         self.credentials_layout.addWidget(card)
 
-    # Copy password to clipboard
     def copy_to_clipboard(self, password, copy_button):
         QApplication.clipboard().setText(password)
 
-        # set button to say "Copied!" for 1/2 second after clicking
+        # flash "Copied!" for 1/2 second after clicking
         copy_button.setText("Copied!")
         QTimer.singleShot(500, lambda: copy_button.setText("Copy Password"))
 
