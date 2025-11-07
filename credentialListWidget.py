@@ -1,9 +1,10 @@
+import time
 from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QPushButton, QWidget, QVBoxLayout, QLabel,
     QDialog, QLineEdit, QFormLayout, QHBoxLayout, QScrollArea
 )
 from PyQt6.QtGui import QFont, QClipboard
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, QTimer
 import sys
 import apiCallerMethods
 from colors import Colors
@@ -77,11 +78,10 @@ class CredentialsListWidget(QWidget):
                 background-color: {Colors.BRAT_GREEN_BUTTON_HOVER};
             }}
         """)
-        copy_button.clicked.connect(lambda _, p=cred['password']: self.copy_to_clipboard(p))
+        copy_button.clicked.connect(lambda _, p=cred['password']: self.copy_to_clipboard(p, copy_button))
 
         button_layout = QHBoxLayout()
         button_layout.addWidget(copy_button)
-        # button_layout.addStretch()
 
         card_layout.addWidget(site)
         card_layout.addWidget(username)
@@ -97,6 +97,11 @@ class CredentialsListWidget(QWidget):
         self.credentials_layout.addWidget(card)
 
     # Copy password to clipboard
-    def copy_to_clipboard(self, password):
+    def copy_to_clipboard(self, password, copy_button):
         QApplication.clipboard().setText(password)
-        print(f"Copied password")
+
+        # set button to say "Copied!" for 1/2 second after clicking
+        copy_button.setText("Copied!")
+        QTimer.singleShot(500, lambda: copy_button.setText("Copy Password"))
+
+        print("Copied password")
