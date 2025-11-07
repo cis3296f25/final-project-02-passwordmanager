@@ -1,5 +1,7 @@
 from gui import MainWindow
-import requests
+from login import LoginDialog
+from PyQt6.QtWidgets import QApplication, QDialog
+import sys
 import threading
 import time
 from passwordManager import app
@@ -14,6 +16,10 @@ if __name__ == "__main__":
 
     time.sleep(1)
 
-    MainWindow.run()
-
-    
+    qt_app = QApplication(sys.argv)
+    login = LoginDialog()
+    result = login.exec()
+    if result == QDialog.DialogCode.Accepted:
+        MainWindow.run()
+    else:
+        sys.exit(0)
