@@ -2,3 +2,4 @@ venv/
 .DS_Store
 vault.key
 vault.db
+__pycache__
