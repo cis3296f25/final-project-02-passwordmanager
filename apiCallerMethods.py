@@ -34,3 +34,22 @@ def get_new_generated_password():
 def delete_credential(site):
     response = requests.delete(f"{BASE_URL}/delete/{site}")
     return response.json()
+
+# account endpoints
+def account_create(username, master_password):
+    response = requests.post(f"{BASE_URL}/account/create", json={
+        "username": username,
+        "master_password": master_password
+    })
+    return response.json()
+
+def account_login(username, master_password):
+    response = requests.post(f"{BASE_URL}/account/login", json={
+        "username": username,
+        "master_password": master_password
+    })
+    return response.json()
+
+def get_status():
+    response = requests.get(f"{BASE_URL}/status")
+    return response.json()

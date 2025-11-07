@@ -148,7 +148,7 @@ class MainWindow(QMainWindow):
     # Run the app
     @staticmethod
     def run():
-        app = QApplication(sys.argv)
+        app = QApplication.instance() or QApplication(sys.argv)
         window = MainWindow()
         window.show()
         window.refresh_credentials()
