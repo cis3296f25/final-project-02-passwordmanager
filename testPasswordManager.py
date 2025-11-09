@@ -1,4 +1,6 @@
 import unittest
+import random
+import string
 from passwordManager import app, c, conn
 
 class TestVaultAPI(unittest.TestCase):
@@ -85,6 +87,49 @@ class TestVaultAPI(unittest.TestCase):
         items = resp.get_json()
         self.assertTrue(all(item.get("site") != "site" for item in items))
         self.client.post("/account/logout")
+
+    def test_account_create_valid_and_duplicate_and_missing_fields(self):
+        # missing fields -> 400
+        r = self.client.post("/account/create", json={"username": "unittest-ca-1"})
+        self.assertEqual(r.status_code, 400)
+        r = self.client.post("/account/create", json={"master_password": "pw"})
+        self.assertEqual(r.status_code, 400)
+
+        # create success -> 201
+        random_username = ''.join(random.choices(string.digits, k=10))
+        r = self.client.post("/account/create", json={"username": random_username, "master_password": "pw"})
+        self.assertEqual(r.status_code, 201)
+        self.assertEqual(r.get_json().get("status"), "account created")
+
+        # duplicate -> 409
+        r = self.client.post("/account/create", json={"username": random_username, "master_password": "pw"})
+        self.assertEqual(r.status_code, 409)
+
+    def test_account_login_variants(self):
+        # missing fields -> 401
+        r = self.client.post("/account/login", json={"username": "u"})
+        self.assertEqual(r.status_code, 401)
+        r = self.client.post("/account/login", json={"master_password": "p"})
+        self.assertEqual(r.status_code, 401)
+
+        # unknown user -> 401
+        r = self.client.post("/account/login", json={"username": "unittest-nope", "master_password": "pw"})
+        self.assertEqual(r.status_code, 401)
+
+        # create account
+        self.client.post("/account/create", json={"username": "unittest-login", "master_password": "secret"})
+
+        # wrong password -> 401
+        r = self.client.post("/account/login", json={"username": "unittest-login", "master_password": "bad"})
+        self.assertEqual(r.status_code, 401)
+
+        # lock first, then correct login should unlock
+        self.client.post("/lock")
+        r = self.client.post("/account/login", json={"username": "unittest-login", "master_password": "secret"})
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(r.get_json().get("status"), "logged in")
+        status = self.client.get("/status").get_json()
+        self.assertFalse(status.get("vault_locked", True))
 
 
 if __name__ == "__main__":
