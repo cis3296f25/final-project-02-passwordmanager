@@ -30,6 +30,11 @@ def get_new_generated_password():
     response = requests.get(f"{BASE_URL}/get/generated-password")
     return response.json()
 
+# 
+def get_all_credentials():
+    response = requests.get(f"{BASE_URL}/list")
+    return response.json()
+
 #calls DELETE
 def delete_credential(site):
     response = requests.delete(f"{BASE_URL}/delete/{site}")
