@@ -133,8 +133,8 @@ def list_credentials():
             password = current_vmk_cipher.decrypt(encrypted_password).decode()
             credentials_list.append({"site": site, "username": username, "password": password})
         except Exception:
-            # if a pw fails to decrypt
-            credentials_list.append({"site": site, "username": username, "password": "!!DECRYPTION ERROR!!"})
+            # hide entries that are not decryptable by the current user
+            continue
     return jsonify(credentials_list)
 
 
