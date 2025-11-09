@@ -3,3 +3,5 @@ venv/
 vault.key
 vault.db
 __pycache__/
+.vscode/
+.vscode/settings.json
