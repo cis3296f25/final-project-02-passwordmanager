@@ -1,15 +1,15 @@
-import time
 from PyQt6.QtWidgets import (
-    QApplication, QMainWindow, QPushButton, QWidget, QVBoxLayout, QLabel,
-    QDialog, QLineEdit, QFormLayout, QHBoxLayout, QScrollArea
+    QApplication, QPushButton, QWidget, QVBoxLayout, QLabel,
+    QHBoxLayout, QScrollArea
 )
-from PyQt6.QtGui import QFont, QClipboard
+from PyQt6.QtGui import QFont, QClipboard, QIcon, QPixmap
 from PyQt6.QtCore import Qt, QTimer
 import sys
 import apiCallerMethods
-from colors import Colors
+from resources.colors import Colors
+from resources.strings import Strings
 
-class CredentialsListWidget(QWidget):
+class ListCredentialsWidget(QWidget):
     def __init__(self):
         super().__init__()
 
@@ -21,7 +21,7 @@ class CredentialsListWidget(QWidget):
         self.scroll_area.setWidgetResizable(True)
         self.scroll_area.setStyleSheet("border: none;")
         layout.addWidget(self.scroll_area)
-
+        
         # inner rectangular container for credentials cards
         self.credentials_container = QWidget()
         self.credentials_layout = QVBoxLayout(self.credentials_container)
@@ -54,9 +54,9 @@ class CredentialsListWidget(QWidget):
     # create a rectangular card for one credential
     def add_credential_card(self, cred):
         card = QWidget()
-        card.setFixedHeight(50)
+        card.setFixedHeight(45)
         card_layout = QHBoxLayout(card)
-        card_layout.setContentsMargins(10, 10, 10, 10)
+        card_layout.setContentsMargins(10, 5, 10, 5)
 
         # display for website, username, ••••••••
         site = QLabel(f"{cred['site']}")
@@ -67,22 +67,30 @@ class CredentialsListWidget(QWidget):
         for label in (site, username, password):
             label.setStyleSheet(f"color: {Colors.WHITE}; font-size: 12px;")
 
-        copy_button = QPushButton("Copy Password")
-        copy_button.setStyleSheet(f"""
-            QPushButton {{
-                background-color: {Colors.BRAT_GREEN};
-                color: {Colors.WHITE};
-                border-radius: 6px;
-                padding: 4px;
-            }}
-            QPushButton:hover {{
-                background-color: {Colors.BRAT_GREEN_BUTTON_HOVER};
-            }}
-        """)
+        # buttons
+        copy_button = QPushButton()
+        edit_button = QPushButton()
+        delete_button = QPushButton()
+
+        copy_icon = QIcon(QPixmap(Strings.COPY_ICON_PATH)) 
+        edit_icon = QIcon(QPixmap(Strings.EDIT_ICON_PATH)) 
+        delete_icon = QIcon(QPixmap(Strings.DELETE_ICON_PATH)) 
+
+        copy_button.setIcon(copy_icon)
+        edit_button.setIcon(edit_icon)
+        delete_button.setIcon(delete_icon)
+
+        copy_button.setStyleSheet(Strings.SMALL_BUTTON_STYLE)
+        edit_button.setStyleSheet(Strings.SMALL_BUTTON_STYLE)
+        delete_button.setStyleSheet(Strings.DELETE_BUTTON_STYLE)
+
         copy_button.clicked.connect(lambda _, p=cred['password']: self.copy_to_clipboard(p, copy_button))
 
         button_layout = QHBoxLayout()
         button_layout.addWidget(copy_button)
+        button_layout.addWidget(edit_button)
+        button_layout.addWidget(delete_button)
+
 
         card_layout.addWidget(site)
         card_layout.addWidget(username)
@@ -99,9 +107,5 @@ class CredentialsListWidget(QWidget):
 
     def copy_to_clipboard(self, password, copy_button):
         QApplication.clipboard().setText(password)
-
-        # flash "Copied!" for 1/2 second after clicking
-        copy_button.setText("Copied!")
-        QTimer.singleShot(500, lambda: copy_button.setText("Copy Password"))
 
         print("Copied password")

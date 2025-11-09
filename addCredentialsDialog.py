@@ -4,7 +4,7 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtGui import QFont
 import apiCallerMethods
-from colors import Colors
+from resources.colors import Colors
 
 
 
