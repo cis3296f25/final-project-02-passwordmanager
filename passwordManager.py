@@ -9,20 +9,6 @@ from kdf import default_kdf_params, derive_wrap_key
 from vmk import generate_vmk, unwrap_vmk, wrap_vmk
 
 # Database stuff (to be refactored into repository later) #################################
-KEY_FILE = "vault.key"
-
-# the else doesn't have test coverage yet because the local global key is still in the repo, 
-# but once we remove that then the only branch here will be the else which will be covered
-if os.path.exists(KEY_FILE):
-    with open(KEY_FILE, "rb") as f:
-        key = f.read()
-else:
-    key = Fernet.generate_key()
-    with open(KEY_FILE, "wb") as f:
-        f.write(key)
-
-cipher = Fernet(key)
-
 conn = sqlite3.connect("vault.db", check_same_thread=False)
 c = conn.cursor()
 c.execute("""
