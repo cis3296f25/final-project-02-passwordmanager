@@ -9,18 +9,6 @@ from kdf import default_kdf_params, derive_wrap_key
 from vmk import generate_vmk, unwrap_vmk, wrap_vmk
 
 # Database stuff (to be refactored into repository later) #################################
-KEY_FILE = "vault.key"
-
-if os.path.exists(KEY_FILE):
-    with open(KEY_FILE, "rb") as f:
-        key = f.read()
-else:
-    key = Fernet.generate_key()
-    with open(KEY_FILE, "wb") as f:
-        f.write(key)
-
-cipher = Fernet(key)
-
 conn = sqlite3.connect("vault.db", check_same_thread=False)
 c = conn.cursor()
 c.execute("""
@@ -45,14 +33,19 @@ conn.commit()
 # Flask API
 app = Flask(__name__)
 app.debug = False
-vault_locked = False
+# Global variables for the vault and current user
+vault_locked = True
+current_user = None
+current_vmk_cipher = None
 
 # POST methods ###########################################################################
 @app.route("/lock", methods=["POST"])
 def lock_vault():
     """Lock the vault (no add/get/delete allowed until unlocked)."""
-    global vault_locked
+    global vault_locked, current_user, current_vmk_cipher
     vault_locked = True
+    current_user = None
+    current_vmk_cipher = None
     return jsonify({"status": "vault locked"})
 
 @app.route("/unlock", methods=["POST"])
@@ -64,12 +57,14 @@ def unlock_vault():
 
 @app.route("/add", methods=["POST"])
 def add_credential():
-    global vault_locked
+    global vault_locked, current_vmk_cipher
     if vault_locked:
         return jsonify({"error": "Vault is locked"}), 423
+    if current_vmk_cipher is None:
+        return jsonify({"error": "Not logged in"}), 401
 
     data = request.json
-    encrypted_password = cipher.encrypt(data["password"].encode())
+    encrypted_password = current_vmk_cipher.encrypt(data["password"].encode())
     c.execute(
         "INSERT INTO credentials (site, username, password) VALUES (?, ?, ?)",
         (data["site"], data["username"], encrypted_password)
@@ -85,15 +80,17 @@ def vault_status():
 
 @app.route("/get/<site>", methods=["GET"])
 def get_credential(site):
-    global vault_locked
+    global vault_locked, current_vmk_cipher
     if vault_locked:
         return jsonify({"error": "Vault is locked"}), 423
+    if current_vmk_cipher is None:
+        return jsonify({"error": "Not logged in"}), 401
 
     c.execute("SELECT username, password FROM credentials WHERE site = ?", (site,))
     row = c.fetchone()
     if row:
         username, encrypted_password = row
-        password = cipher.decrypt(encrypted_password).decode()
+        password = current_vmk_cipher.decrypt(encrypted_password).decode()
         return jsonify({"site": site, "username": username, "password": password})
     return jsonify({"error": "not found"})
 
@@ -107,9 +104,11 @@ def generate_password(length=12):
 # List all stored credentials
 @app.route("/list", methods=["GET"])
 def list_credentials():
-    global vault_locked
+    global vault_locked, current_vmk_cipher
     if vault_locked:
         return jsonify({"error": "Vault is locked"}), 423
+    if current_vmk_cipher is None:
+        return jsonify({"error": "Not logged in"}), 401
     
     # selects all columns
     c.execute("SELECT site, username, password FROM credentials")
@@ -119,20 +118,22 @@ def list_credentials():
     for site, username, encrypted_password in rows:
         try:
             # decrypt pw for display
-            password = cipher.decrypt(encrypted_password).decode()
+            password = current_vmk_cipher.decrypt(encrypted_password).decode()
             credentials_list.append({"site": site, "username": username, "password": password})
         except Exception:
-            # if a pw fails to decrypt
-            credentials_list.append({"site": site, "username": username, "password": "!!DECRYPTION ERROR!!"})
+            # hide entries that are not decryptable by the current user
+            continue
     return jsonify(credentials_list)
 
 
 # DELETE methods #############################################################################
 @app.route("/delete/<site>", methods=["DELETE"])
 def delete_credential(site):
-    global vault_locked
+    global vault_locked, current_vmk_cipher
     if vault_locked:
         return jsonify({"error": "Vault is locked"}), 423
+    if current_vmk_cipher is None:
+        return jsonify({"error": "Not logged in"}), 401
     
     c.execute("SELECT username, password FROM credentials WHERE site = ?", (site,))
     row = c.fetchone()
@@ -140,7 +141,7 @@ def delete_credential(site):
         return jsonify({"error": "not found"})
     
     username, encrypted_password = row
-    password = cipher.decrypt(encrypted_password).decode()
+    password = current_vmk_cipher.decrypt(encrypted_password).decode()
     c.execute("DELETE FROM credentials WHERE site = ?", (site,))
     conn.commit()
     return jsonify({"site": site, "username": username, "password": password})
@@ -149,8 +150,13 @@ def delete_credential(site):
 # Update password for a site
 @app.route("/update", methods=["PUT"])
 def update_password():
+    global vault_locked, current_vmk_cipher
+    if vault_locked:
+        return jsonify({"error": "Vault is locked"}), 423
+    if current_vmk_cipher is None:
+        return jsonify({"error": "Not logged in"}), 401
     data = request.json
-    encrypted_password = cipher.encrypt(data["password"].encode())
+    encrypted_password = current_vmk_cipher.encrypt(data["password"].encode())
     c.execute("UPDATE credentials SET password = ? WHERE site = ?", (encrypted_password, data["site"]))
     conn.commit()
     return jsonify({"status": "updated", "site": data["site"]})
