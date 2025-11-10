@@ -3,6 +3,7 @@ from PyQt6.QtWidgets import (
     QDialog, QLineEdit, QFormLayout, QHBoxLayout,
     QTableWidget, QTableWidgetItem, QHeaderView
 )
+from PyQt6.QtCore import Qt, QPoint
 from PyQt6.QtGui import QFont, QIcon
 import sys
 import apiCallerMethods
@@ -53,8 +54,24 @@ class MainWindow(QMainWindow):
 
     # Open the Add Credentials dialog
     def open_add_dialog(self):
-        dialog = AddCredentialsDialog()
+        overlay = QWidget(self)
+        overlay.setGeometry(self.rect())
+        overlay.setStyleSheet("background-color: rgba(0, 0, 0, 150);")  # translucent overlay
+        overlay.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, False)
+        overlay.show()
+        
+        dialog = AddCredentialsDialog(self)  # Pass self as parent so it stays centered
+        dialog.adjustSize() 
+
+        #Center dialog relative to main window
+        parent_rect = self.frameGeometry()
+        dialog_rect = dialog.frameGeometry()
+
+        dialog_rect.moveCenter(parent_rect.center())
+        dialog.move(dialog_rect.topLeft())
         dialog.exec()
+
+        overlay.deleteLater()
         self.refresh_credentials()
 
     def refresh_credentials(self):
