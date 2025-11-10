@@ -13,6 +13,7 @@ conn = sqlite3.connect("vault.db", check_same_thread=False)
 c = conn.cursor()
 c.execute("""
 CREATE TABLE IF NOT EXISTS credentials (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
     site TEXT,
     username TEXT,
     password BLOB
@@ -29,6 +30,31 @@ CREATE TABLE IF NOT EXISTS user_metadata (
 """)
 conn.commit()
 ###################################################################################
+
+# this is optional, but here for completeness
+# it addresses the case where the credentials table was created earlier before we had the id column
+# it's also aggressively simple: we create a new table with the id field, copy all the data from the old table into the new, drop the old table, and rename the new table to the old table name
+def _ensure_credentials_id_column():
+    c.execute("PRAGMA table_info(credentials)")
+    cols = [row[1] for row in c.fetchall()]
+    if "id" not in cols:
+        c.execute("""
+        CREATE TABLE credentials_new (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            site TEXT,
+            username TEXT,
+            password BLOB
+        )
+        """)
+        c.execute("""
+        INSERT INTO credentials_new (site, username, password)
+        SELECT site, username, password FROM credentials
+        """)
+        c.execute("DROP TABLE credentials")
+        c.execute("ALTER TABLE credentials_new RENAME TO credentials")
+        conn.commit()
+
+_ensure_credentials_id_column()
 
 # Flask API
 app = Flask(__name__)
