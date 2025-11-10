@@ -21,6 +21,9 @@ class Strings:
             QPushButton:hover {{
                 background-color: {Colors.BRAT_GREEN_BUTTON_HOVER};
             }}
+            QPushButton:pressed {{
+                border: 2px solid {Colors.BRAT_GREEN_BUTTON_PRESSED};
+            }}
         """
     SMALL_BUTTON_STYLE = f"""
             QPushButton {{
@@ -32,6 +35,9 @@ class Strings:
             QPushButton:hover {{
                 background-color: {Colors.BRAT_GREEN_BUTTON_HOVER};
             }}
+            QPushButton:pressed {{
+                border: 2px solid {Colors.BRAT_GREEN_BUTTON_PRESSED};
+            }}
         """
     DELETE_BUTTON_STYLE = f"""
             QPushButton {{
@@ -42,5 +48,8 @@ class Strings:
             }}
             QPushButton:hover {{
                 background-color: {Colors.RED_BUTTON_HOVER};
+            }}
+            QPushButton:pressed {{
+                border: 2px solid {Colors.RED_BUTTON_PRESSED};
             }}
         """

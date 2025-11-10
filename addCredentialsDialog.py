@@ -5,6 +5,8 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtGui import QFont
 import apiCallerMethods
 from resources.colors import Colors
+from resources.strings import Strings
+
 
 
 
@@ -36,17 +38,7 @@ class AddCredentialsDialog(QDialog):
         self.generate_button = QPushButton("Generate Password")
         self.save_button = QPushButton("Save Credential")
 
-        button_style = f"""
-            QPushButton {{
-                background-color: {Colors.BRAT_GREEN};
-                color: {Colors.WHITE};
-                border-radius: 10px;
-                padding: 6px;
-            }}
-            QPushButton:hover {{
-                background-color: {Colors.BRAT_GREEN_BUTTON_HOVER};
-            }}
-        """
+        button_style = Strings.LARGE_BUTTON_STYLE
         self.generate_button.setStyleSheet(button_style)
         self.save_button.setStyleSheet(button_style)
 
