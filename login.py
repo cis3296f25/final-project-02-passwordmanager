@@ -1,8 +1,9 @@
 from PyQt6.QtWidgets import (
     QDialog, QVBoxLayout, QFormLayout, QLineEdit, QPushButton, QLabel, QHBoxLayout
 )
-from PyQt6.QtGui import QFont
-from colors import Colors
+from PyQt6.QtGui import QFont, QIcon
+from resources.colors import Colors
+from resources.strings import Strings
 import apiCallerMethods
 
 
@@ -10,6 +11,7 @@ class LoginDialog(QDialog):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Login")
+        self.setWindowIcon(QIcon(Strings.WINDOW_ICON_PATH))
         self.setStyleSheet(f"background-color: {Colors.DARK_GREY}; color: {Colors.WHITE};")
         self.setMinimumWidth(320)
 
