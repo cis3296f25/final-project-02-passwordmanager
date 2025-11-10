@@ -76,12 +76,23 @@ class MainWindow(QMainWindow):
 
     def refresh_credentials(self):
         self.credentials_list.load_credentials()
+    
+    def center(self):
+        screen = QApplication.primaryScreen()
+        if screen is None:
+            return
+        screen_center = screen.availableGeometry().center()
+        frame_geom = self.frameGeometry()
+        frame_geom.moveCenter(screen_center)
+        self.move(frame_geom.topLeft())
 
     # Run the app
     @staticmethod
     def run():
         app = QApplication.instance() or QApplication(sys.argv)
         window = MainWindow()
+        window.center()
+        window.show()
         window.show()
         window.refresh_credentials()
         app.exec()
