@@ -9,8 +9,8 @@ from resources.colors import Colors
 
 
 class AddCredentialsDialog(QDialog):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, parent=None):
+        super().__init__(parent) 
 
         # Window setup
         self.setWindowTitle("Add New Credential")
