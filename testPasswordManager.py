@@ -26,20 +26,24 @@ class TestVaultAPI(unittest.TestCase):
 
         r = self.client.post("/add", json={"site": site, "username": user, "password": pwd})
         self.assertEqual(r.status_code, 200)
+        new_id = r.get_json().get("id")
+        self.assertIsNotNone(new_id)
 
-        r = self.client.get(f"/get/{site}")
+        r = self.client.get(f"/get/{new_id}")
         self.assertEqual(r.status_code, 200)
         data = r.get_json()
+        self.assertEqual(data["id"], new_id)
         self.assertEqual(data["username"], user)
         self.assertEqual(data["password"], pwd)
 
         # delete returns the deleted record in current API
-        r = self.client.delete(f"/delete/{site}")
+        r = self.client.delete(f"/delete/{new_id}")
         self.assertEqual(r.status_code, 200)
         j = r.get_json()
+        self.assertEqual(j.get("id"), new_id)
         self.assertTrue(j.get("site") == site or j.get("status") == "deleted")
 
-        r = self.client.get(f"/get/{site}")
+        r = self.client.get(f"/get/{new_id}")
         self.assertEqual(r.get_json().get("error"), "not found")
 
     def test_per_user_encryption_distinct_ciphertexts(self):

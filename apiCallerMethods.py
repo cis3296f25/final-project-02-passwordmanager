@@ -17,8 +17,8 @@ def add_credential(site, username, password):
     return response.json()
 
 #calls GET
-def get_credential(site):
-    response = requests.get(f"{BASE_URL}/get/{site}")
+def get_credential(cred_id):
+    response = requests.get(f"{BASE_URL}/get/{cred_id}")
     return response.json()
 
 def get_all_credentials():
@@ -30,14 +30,17 @@ def get_new_generated_password():
     response = requests.get(f"{BASE_URL}/get/generated-password")
     return response.json()
 
-# 
-def get_all_credentials():
-    response = requests.get(f"{BASE_URL}/list")
+#calls DELETE
+def delete_credential(cred_id):
+    response = requests.delete(f"{BASE_URL}/delete/{cred_id}")
     return response.json()
 
-#calls DELETE
-def delete_credential(site):
-    response = requests.delete(f"{BASE_URL}/delete/{site}")
+# calls PUT to update password by credential id
+def update_credential(cred_id, new_password):
+    response = requests.put(f"{BASE_URL}/update", json={
+        "id": cred_id,
+        "password": new_password
+    })
     return response.json()
 
 # account endpoints
