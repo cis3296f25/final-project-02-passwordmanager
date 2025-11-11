@@ -83,6 +83,7 @@ class AddCredentialsDialog(QDialog):
             response = apiCallerMethods.add_credential(site, username, password)
             if "status" in response and response["status"] == "added":
                 self.status_label.setText("Credential added successfully.")
+                self.accept()  # <-- close the dialog after a successful add
             else:
                 self.status_label.setText(f"Error: {response.get('error', 'Unknown')}")
         except Exception as e:
