@@ -2,8 +2,8 @@ from PyQt6.QtWidgets import (
     QApplication, QPushButton, QWidget, QVBoxLayout, QLabel,
     QHBoxLayout, QScrollArea
 )
-from PyQt6.QtGui import QFont, QClipboard, QIcon, QPixmap
-from PyQt6.QtCore import Qt, QTimer
+from PyQt6.QtGui import QFont, QClipboard, QIcon, QPixmap, QCursor
+from PyQt6.QtCore import Qt 
 import sys
 import apiCallerMethods
 from resources.colors import Colors
@@ -67,11 +67,12 @@ class ListCredentialsWidget(QWidget):
         for label in (site, username, password):
             label.setStyleSheet(f"color: {Colors.WHITE}; font-size: 12px;")
 
-        # buttons
+        # buttons (really should refactor this later) ##########################################
         copy_button = QPushButton()
         edit_button = QPushButton()
         delete_button = QPushButton()
 
+        # button icons
         copy_icon = QIcon(QPixmap(Strings.COPY_ICON_PATH)) 
         edit_icon = QIcon(QPixmap(Strings.EDIT_ICON_PATH)) 
         delete_icon = QIcon(QPixmap(Strings.DELETE_ICON_PATH)) 
@@ -80,17 +81,20 @@ class ListCredentialsWidget(QWidget):
         edit_button.setIcon(edit_icon)
         delete_button.setIcon(delete_icon)
 
+        # styles
         copy_button.setStyleSheet(Strings.SMALL_BUTTON_STYLE)
         edit_button.setStyleSheet(Strings.SMALL_BUTTON_STYLE)
         delete_button.setStyleSheet(Strings.DELETE_BUTTON_STYLE)
 
-        copy_button.clicked.connect(lambda _, p=cred['password']: self.copy_to_clipboard(p, copy_button))
+        copy_button.clicked.connect(lambda _, p=cred['password']: self.copy_to_clipboard(p))
+        delete_button.clicked.connect(lambda _, id=cred['id']: self.delete_credential(id))
+
 
         button_layout = QHBoxLayout()
         button_layout.addWidget(copy_button)
         button_layout.addWidget(edit_button)
         button_layout.addWidget(delete_button)
-
+        ###########################################################################################
 
         card_layout.addWidget(site)
         card_layout.addWidget(username)
@@ -105,7 +109,10 @@ class ListCredentialsWidget(QWidget):
 
         self.credentials_layout.addWidget(card)
 
-    def copy_to_clipboard(self, password, copy_button):
+    def copy_to_clipboard(self, password):
         QApplication.clipboard().setText(password)
-
         print("Copied password")
+
+    def delete_credential(self, id):
+        apiCallerMethods.delete_credential(id)
+        self.load_credentials()
