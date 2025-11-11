@@ -34,7 +34,7 @@ class MainWindow(QMainWindow):
         central.setLayout(layout)
 
         # credentials list widget
-        self.credentials_list = ListCredentialsWidget()
+        self.credentials_list = ListCredentialsWidget(self)
         layout.addWidget(self.credentials_list)
 
         # buttons

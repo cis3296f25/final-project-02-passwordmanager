@@ -14,7 +14,8 @@ class Strings:
     LARGE_BUTTON_STYLE = f"""
             QPushButton {{
                 background-color: {Colors.BRAT_GREEN};
-                color: {Colors.WHITE};
+                color: {Colors.BLACK};
+                font-weight: 600;
                 border-radius: 10px;
                 padding: 8px;
             }}
@@ -28,7 +29,8 @@ class Strings:
     SMALL_BUTTON_STYLE = f"""
             QPushButton {{
                 background-color: {Colors.BRAT_GREEN};
-                color: {Colors.WHITE};
+                color: {Colors.BLACK};
+                font-weight: 600;
                 border-radius: 6px;
                 padding: 4px;
             }}
@@ -42,7 +44,8 @@ class Strings:
     DELETE_BUTTON_STYLE = f"""
             QPushButton {{
                 background-color: {Colors.RED};
-                color: {Colors.WHITE};
+                color: {Colors.BLACK};
+                font-weight: 600;
                 border-radius: 6px;
                 padding: 4px;
             }}
