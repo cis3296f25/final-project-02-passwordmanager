@@ -7,10 +7,9 @@ import apiCallerMethods
 from resources.colors import Colors
 
 
-
 class AddCredentialsDialog(QDialog):
     def __init__(self, parent=None):
-        super().__init__(parent) 
+        super().__init__(parent)
 
         # Window setup
         self.setWindowTitle("Add New Credential")
@@ -30,6 +29,11 @@ class AddCredentialsDialog(QDialog):
         form_layout.addRow("Username:", self.username_input)
         form_layout.addRow("Password:", self.password_input)
         layout.addLayout(form_layout)
+
+        # Password strength label
+        self.strength_label = QLabel("Password strength: ")
+        self.strength_label.setStyleSheet("color: lightgray;")
+        layout.addWidget(self.strength_label)
 
         # Buttons
         button_layout = QHBoxLayout()
@@ -64,6 +68,9 @@ class AddCredentialsDialog(QDialog):
         self.generate_button.clicked.connect(self.generate_password)
         self.save_button.clicked.connect(self.save_credential)
 
+        # Connect password input to strength checker
+        self.password_input.textChanged.connect(self.update_strength_label)
+
     # Generate password via API
     def generate_password(self):
         try:
@@ -87,3 +94,29 @@ class AddCredentialsDialog(QDialog):
                 self.status_label.setText(f"Error: {response.get('error', 'Unknown')}")
         except Exception as e:
             self.status_label.setText(f"Error saving credential: {e}")
+
+    # Password strength checker
+    def update_strength_label(self):
+        password = self.password_input.text()
+        score = 0
+
+        if len(password) >= 8:
+            score += 1
+        if any(c.isdigit() for c in password):
+            score += 1
+        if any(c.isupper() for c in password):
+            score += 1
+        if any(c.islower() for c in password):
+            score += 1
+        if any(c in "@$!%*?&#" for c in password):
+            score += 1
+
+        if score <= 2:
+            self.strength_label.setText("Password strength: Weak")
+            self.strength_label.setStyleSheet("color: red;")
+        elif score in [3, 4]:
+            self.strength_label.setText("Password strength: Medium")
+            self.strength_label.setStyleSheet("color: orange;")
+        else:
+            self.strength_label.setText("Password strength: Strong")
+            self.strength_label.setStyleSheet("color: lightgreen;")
