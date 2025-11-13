@@ -36,9 +36,11 @@ def delete_credential(cred_id):
     return response.json()
 
 # calls PUT to update password by credential id
-def update_credential(cred_id, new_password):
+def update_credential(cred_id, new_site, new_username, new_password):
     response = requests.put(f"{BASE_URL}/update", json={
         "id": cred_id,
+        "site": new_site,
+        "username": new_username,
         "password": new_password
     })
     return response.json()

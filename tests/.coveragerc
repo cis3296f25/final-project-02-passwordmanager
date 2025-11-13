@@ -1,0 +1,11 @@
+# note: this is currently an experimental way to stop taking coverage reports from the test files themselves
+# and it is not working
+# i don't even know if '#' is proper comment syntax in a file of this type
+# but i'm keeping it in in case anyone can get it to work
+[run]
+omit = 
+    */tests/*
+
+[report]
+exclude_lines = 
+    pragma: no cover

@@ -32,17 +32,7 @@ class LoginDialog(QDialog):
         buttons = QHBoxLayout()
         self.login_btn = QPushButton("Login")
         self.create_btn = QPushButton("Create Account")
-        button_style = f"""
-            QPushButton {{
-                background-color: {Colors.BRAT_GREEN};
-                color: {Colors.WHITE};
-                border-radius: 10px;
-                padding: 8px;
-            }}
-            QPushButton:hover {{
-                background-color: {Colors.BRAT_GREEN_BUTTON_HOVER};
-            }}
-        """
+        button_style = Strings.SMALL_BUTTON_STYLE
         self.login_btn.setStyleSheet(button_style)
         self.create_btn.setStyleSheet(button_style)
         buttons.addWidget(self.login_btn)

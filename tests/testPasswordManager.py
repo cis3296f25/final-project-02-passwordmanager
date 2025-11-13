@@ -1,7 +1,11 @@
 import unittest
 import random
 import string
+import sqlite3
+import tempfile
+import os
 from passwordManager import app, c, conn
+import passwordManager as pm
 
 class TestVaultAPI(unittest.TestCase):
     @classmethod
@@ -25,7 +29,7 @@ class TestVaultAPI(unittest.TestCase):
         pwd  = "TestPassword"
 
         r = self.client.post("/add", json={"site": site, "username": user, "password": pwd})
-        self.assertEqual(r.status_code, 200)
+        self.assertEqual(r.status_code, 201)
         new_id = r.get_json().get("id")
         self.assertIsNotNone(new_id)
 
@@ -134,7 +138,154 @@ class TestVaultAPI(unittest.TestCase):
         self.assertEqual(r.get_json().get("status"), "logged in")
         status = self.client.get("/status").get_json()
         self.assertFalse(status.get("vault_locked", True))
+        
+    # tests which are redundant in practice but get to 100% coverage #############################################
+    def test_status_and_lock_unlock_cycle(self):
+        # initial status after login in setUpClass should be unlocked
+        res = self.client.get("/status").get_json()
+        self.assertIn("vault_locked", res)
 
+        # lock, then status
+        self.client.post("/lock")
+        self.assertTrue(self.client.get("/status").get_json()["vault_locked"])
 
-if __name__ == "__main__":
-    unittest.main(verbosity=2)
+        # unlock
+        self.client.post("/unlock")
+        self.assertFalse(self.client.get("/status").get_json()["vault_locked"])
+
+    def test_add_rejects_when_locked(self):
+        self.client.post("/lock")
+        r = self.client.post("/add", json={"site":"s","username":"u","password":"p"})
+        self.assertEqual(r.status_code, 423)  # locked
+        # restore
+        self.client.post("/unlock")
+        self.client.post("/account/login", json={"username":"unittest-user","master_password":"unittest-pass"})
+
+    def test_add_rejects_when_not_logged_in(self):
+        # ensure unlocked + not logged in (lock clears vmk, unlock leaves it cleared)
+        self.client.post("/lock")
+        self.client.post("/unlock")
+        r = self.client.post("/add", json={"site":"s","username":"u","password":"p"})
+        self.assertEqual(r.status_code, 401)  # not logged in
+        # re-login for subsequent tests
+        self.client.post("/account/login", json={"username":"unittest-user","master_password":"unittest-pass"})
+
+    def test_get_not_found_and_errors(self):
+        # not found
+        r = self.client.get("/get/999999")
+        self.assertEqual(r.status_code, 404)
+
+        # locked
+        self.client.post("/lock")
+        self.assertEqual(self.client.get("/get/1").status_code, 423)
+        self.client.post("/unlock")
+
+        # not logged in
+        self.client.post("/account/logout")
+        # logout locks the vault; unlock to test 401 path
+        self.client.post("/unlock")
+        self.assertEqual(self.client.get("/get/1").status_code, 401)
+        self.client.post("/account/login", json={"username":"unittest-user","master_password":"unittest-pass"})
+
+    def test_list_errors_when_locked_and_not_logged_in(self):
+        self.client.post("/lock")
+        self.assertEqual(self.client.get("/list").status_code, 423)
+        self.client.post("/unlock")
+
+        self.client.post("/account/logout")
+        # logout locks the vault; unlock to test 401 path
+        self.client.post("/unlock")
+        self.assertEqual(self.client.get("/list").status_code, 401)
+        self.client.post("/account/login", json={"username":"unittest-user","master_password":"unittest-pass"})
+
+    def test_delete_errors_and_not_found(self):
+        # not found
+        self.assertEqual(self.client.delete("/delete/999999").status_code, 404)
+
+        # locked
+        self.client.post("/lock")
+        self.assertEqual(self.client.delete("/delete/1").status_code, 423)
+        self.client.post("/unlock")
+
+        # not logged in
+        self.client.post("/account/logout")
+        self.client.post("/unlock")
+        self.assertEqual(self.client.delete("/delete/1").status_code, 401)
+        self.client.post("/account/login", json={"username":"unittest-user","master_password":"unittest-pass"})
+
+    def test_update_errors_and_success(self):
+        # ensure logged in for creation
+        self.client.post("/account/login", json={"username":"unittest-user","master_password":"unittest-pass"})
+        # create a row first
+        add = self.client.post("/add", json={"site":"updsite","username":"u","password":"p"})
+        self.assertEqual(add.status_code, 201)
+        cid = add.get_json().get("id")
+        self.assertIsNotNone(cid)
+
+        # missing id
+        self.assertEqual(self.client.put("/update", json={"password":"np"}).status_code, 400)
+
+        # locked
+        self.client.post("/lock")
+        self.assertEqual(self.client.put("/update", json={"id":cid,"password":"np"}).status_code, 423)
+        self.client.post("/unlock")
+
+        # not logged in
+        self.client.post("/account/logout")
+        # logout locks vault; unlock to test 401
+        self.client.post("/unlock")
+        self.assertEqual(self.client.put("/update", json={"id":cid,"password":"np"}).status_code, 401)
+
+        # success (relogin)
+        self.client.post("/account/login", json={"username":"unittest-user","master_password":"unittest-pass"})
+        r = self.client.put("/update", json={"id":cid,"password":"np"})
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(r.get_json().get("status"), "updated")
+
+    def test_generate_password_default(self):
+        r = self.client.get("/get/generated-password")
+        self.assertEqual(r.status_code, 200)
+        data = r.get_json()
+        self.assertIn("password", data)
+        pw = data["password"]
+        self.assertIsInstance(pw, str)
+        self.assertEqual(len(pw), 12)
+        allowed = set("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()")
+        self.assertTrue(all(ch in allowed for ch in pw))
+
+    def test_ensure_credentials_id_column_migration(self):
+        # Save originals
+        old_conn = pm.conn
+        old_c = pm.c
+        try:
+            # Create temp DB without id column
+            tmp_fd, tmp_path = tempfile.mkstemp(prefix="vault_test_", suffix=".db")
+            os.close(tmp_fd)
+            new_conn = sqlite3.connect(tmp_path, check_same_thread=False)
+            new_c = new_conn.cursor()
+            new_c.execute("""
+            CREATE TABLE IF NOT EXISTS credentials (
+                site TEXT,
+                username TEXT,
+                password BLOB
+            )
+            """)
+            new_conn.commit()
+
+            # Swap globals
+            pm.conn = new_conn
+            pm.c = new_c
+
+            # Run migration
+            pm.ensure_credentials_id_column()
+
+            # Assert id column exists
+            new_c.execute("PRAGMA table_info(credentials)")
+            cols = [row[1] for row in new_c.fetchall()]
+            self.assertIn("id", cols)
+        finally:
+            # Cleanup and restore
+            new_conn.close()
+            os.remove(tmp_path)
+            pm.conn = old_conn
+            pm.c = old_c

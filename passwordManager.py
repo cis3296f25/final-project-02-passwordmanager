@@ -95,8 +95,10 @@ def add_credential():
         "INSERT INTO credentials (site, username, password) VALUES (?, ?, ?)",
         (data["site"], data["username"], encrypted_password)
     )
+    new_user_id = c.lastrowid
+
     conn.commit()
-    return jsonify({"status": "added"}), 201
+    return jsonify({"status": "added", "id": new_user_id}), 201
 
 # GET methods ###########################################################################
 @app.route("/status", methods=["GET"])
@@ -117,7 +119,7 @@ def get_credential(cred_id):
     if row:
         site, username, encrypted_password = row
         password = current_vmk_cipher.decrypt(encrypted_password).decode()
-        return jsonify({"id": cred_id, "site": site, "username": username, "password": password}), 409
+        return jsonify({"id": cred_id, "site": site, "username": username, "password": password}), 200
     return jsonify({"error": "not found"}), 404
 
 # Password generator
@@ -164,7 +166,7 @@ def delete_credential(cred_id):
     c.execute("SELECT site, username, password FROM credentials WHERE id = ?", (cred_id,))
     row = c.fetchone()
     if not row:
-        return jsonify({"error": "not found"})
+        return jsonify({"error": "not found"}), 404
     
     site, username, encrypted_password = row
     password = current_vmk_cipher.decrypt(encrypted_password).decode()
@@ -173,9 +175,9 @@ def delete_credential(cred_id):
     return jsonify({"id": cred_id, "site": site, "username": username, "password": password})
 
 # PUT methods #########################################################################
-# Update password for a site
+# Update password for a credential
 @app.route("/update", methods=["PUT"])
-def update_password():
+def update_credential():
     global vault_locked, current_vmk_cipher
     if vault_locked:
         return jsonify({"error": "Vault is locked"}), 423
@@ -185,8 +187,14 @@ def update_password():
     cred_id = data.get("id")
     if cred_id is None:
         return jsonify({"error": "missing id"}), 400
+    username = data["username"]
+    site = data["site"]
     encrypted_password = current_vmk_cipher.encrypt(data["password"].encode())
-    c.execute("UPDATE credentials SET password = ? WHERE id = ?", (encrypted_password, cred_id))
+    c.execute(
+        "UPDATE credentials SET site = ?, username = ?, password = ? WHERE id = ?",
+        (site, username, encrypted_password, cred_id)
+    )
+
     conn.commit()
     return jsonify({"status": "updated", "id": cred_id})
 
@@ -265,34 +273,5 @@ def account_logout():
 
 # Test and run
 if __name__ == "__main__":
-    # Example test credential
-    test_site = "example.com"
-    test_user = "alice"
-    test_pass = "testpassword"
-    print(f"Generated password for {test_user}@{test_site}: {test_pass}")
-
-    with app.test_client() as client:
-        create_resp = client.post("/account/create", json={"username": "test", "master_password": "test"})
-        print("/account/create:", create_resp.status_code, create_resp.json)
-        login_resp = client.post("/account/login", json={"username": "test", "master_password": "test"})
-        print("/account/login:", login_resp.status_code, login_resp.json)
-
-        client.post("/add", json={"site": test_site, "username": test_user, "password": test_pass})
-        client.post("/add", json={"site": "github.com", "username": "markZuck", "password": test_pass})
-        res = client.get(f"/get/{test_site}")
-        res2 = client.get(f"/get/{'github.com'}")
-        print("Retrieved from vault:", res.json, res2.json)
-
-        deleted_resp = client.delete(f"/delete/{test_site}")
-        print("Deleted site:", deleted_resp.json)
-
-        list_resp = client.get("/list")
-        print("All stored credentials:", list_resp.json)
-
-        client.put("/update", json={"site": "github.com", "password": "NewSecurePass123!"})
-        updated_resp = client.get("/get/github.com")
-        print("Updated GitHub credential:", updated_resp.json)
-
-        
     # Run server
     app.run(port=5000)

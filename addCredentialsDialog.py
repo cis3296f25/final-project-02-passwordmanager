@@ -5,12 +5,11 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtGui import QFont
 import apiCallerMethods
 from resources.colors import Colors
-
-
+from resources.strings import Strings
 
 class AddCredentialsDialog(QDialog):
     def __init__(self, parent=None):
-        super().__init__(parent) 
+        super().__init__(parent)
 
         # Window setup
         self.setWindowTitle("Add New Credential")
@@ -31,22 +30,17 @@ class AddCredentialsDialog(QDialog):
         form_layout.addRow("Password:", self.password_input)
         layout.addLayout(form_layout)
 
+        # Password strength label
+        self.strength_label = QLabel("Password strength: ")
+        self.strength_label.setStyleSheet("color: lightgray;")
+        layout.addWidget(self.strength_label)
+
         # Buttons
         button_layout = QHBoxLayout()
         self.generate_button = QPushButton("Generate Password")
         self.save_button = QPushButton("Save Credential")
 
-        button_style = f"""
-            QPushButton {{
-                background-color: {Colors.BRAT_GREEN};
-                color: {Colors.WHITE};
-                border-radius: 10px;
-                padding: 6px;
-            }}
-            QPushButton:hover {{
-                background-color: {Colors.BRAT_GREEN_BUTTON_HOVER};
-            }}
-        """
+        button_style = Strings.LARGE_BUTTON_STYLE
         self.generate_button.setStyleSheet(button_style)
         self.save_button.setStyleSheet(button_style)
 
@@ -63,6 +57,9 @@ class AddCredentialsDialog(QDialog):
         # Connect buttons
         self.generate_button.clicked.connect(self.generate_password)
         self.save_button.clicked.connect(self.save_credential)
+
+        # Connect password input to strength checker
+        self.password_input.textChanged.connect(self.update_strength_label)
 
     # Generate password via API
     def generate_password(self):
@@ -88,3 +85,44 @@ class AddCredentialsDialog(QDialog):
                 self.status_label.setText(f"Error: {response.get('error', 'Unknown')}")
         except Exception as e:
             self.status_label.setText(f"Error saving credential: {e}")
+ # Save credential to database
+ def save_credential(self):
+     try:
+         site = self.site_input.text()
+         username = self.username_input.text()
+         password = self.password_input.text()
+
+         response = apiCallerMethods.add_credential(site, username, password)
+         if "status" in response and response["status"] == "added":
+             self.status_label.setText("Credential added successfully.")
+             self.accept()  # <-- close the dialog after a successful add
+         else:
+             self.status_label.setText(f"Error: {response.get('error', 'Unknown')}")
+     except Exception as e:
+         self.status_label.setText(f"Error saving credential: {e}")
+
+ # Password strength checker
+ def update_strength_label(self):
+     password = self.password_input.text()
+     score = 0
+
+     if len(password) >= 8:
+         score += 1
+     if any(c.isdigit() for c in password):
+         score += 1
+     if any(c.isupper() for c in password):
+         score += 1
+     if any(c.islower() for c in password):
+         score += 1
+     if any(c in "@$!%*?&#" for c in password):
+         score += 1
+
+     if score <= 2:
+         self.strength_label.setText("Password strength: Weak")
+         self.strength_label.setStyleSheet("color: red;")
+     elif score in [3, 4]:
+         self.strength_label.setText("Password strength: Medium")
+         self.strength_label.setStyleSheet("color: orange;")
+     else:
+         self.strength_label.setText("Password strength: Strong")
+         self.strength_label.setStyleSheet("color: lightgreen;")
