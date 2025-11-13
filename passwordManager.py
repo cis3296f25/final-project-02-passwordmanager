@@ -95,8 +95,10 @@ def add_credential():
         "INSERT INTO credentials (site, username, password) VALUES (?, ?, ?)",
         (data["site"], data["username"], encrypted_password)
     )
+    new_user_id = c.lastrowid
+
     conn.commit()
-    return jsonify({"status": "added"}), 201
+    return jsonify({"status": "added", "id": new_user_id}), 201
 
 # GET methods ###########################################################################
 @app.route("/status", methods=["GET"])
@@ -117,7 +119,7 @@ def get_credential(cred_id):
     if row:
         site, username, encrypted_password = row
         password = current_vmk_cipher.decrypt(encrypted_password).decode()
-        return jsonify({"id": cred_id, "site": site, "username": username, "password": password}), 409
+        return jsonify({"id": cred_id, "site": site, "username": username, "password": password}), 200
     return jsonify({"error": "not found"}), 404
 
 # Password generator
