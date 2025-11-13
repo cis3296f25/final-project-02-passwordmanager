@@ -175,9 +175,9 @@ def delete_credential(cred_id):
     return jsonify({"id": cred_id, "site": site, "username": username, "password": password})
 
 # PUT methods #########################################################################
-# Update password for a site
+# Update password for a credential
 @app.route("/update", methods=["PUT"])
-def update_password():
+def update_credential():
     global vault_locked, current_vmk_cipher
     if vault_locked:
         return jsonify({"error": "Vault is locked"}), 423
@@ -187,8 +187,14 @@ def update_password():
     cred_id = data.get("id")
     if cred_id is None:
         return jsonify({"error": "missing id"}), 400
+    username = data["username"]
+    site = data["site"]
     encrypted_password = current_vmk_cipher.encrypt(data["password"].encode())
-    c.execute("UPDATE credentials SET password = ? WHERE id = ?", (encrypted_password, cred_id))
+    c.execute(
+        "UPDATE credentials SET site = ?, username = ?, password = ? WHERE id = ?",
+        (site, username, encrypted_password, cred_id)
+    )
+
     conn.commit()
     return jsonify({"status": "updated", "id": cred_id})
 
