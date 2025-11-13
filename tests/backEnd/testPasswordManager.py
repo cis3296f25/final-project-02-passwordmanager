@@ -1,6 +1,11 @@
 import unittest
 import random
 import string
+import sys
+import os
+
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
+
 from passwordManager import app, c, conn
 
 class TestVaultAPI(unittest.TestCase):
@@ -25,7 +30,7 @@ class TestVaultAPI(unittest.TestCase):
         pwd  = "TestPassword"
 
         r = self.client.post("/add", json={"site": site, "username": user, "password": pwd})
-        self.assertEqual(r.status_code, 200)
+        self.assertEqual(r.status_code, 201)
         new_id = r.get_json().get("id")
         self.assertIsNotNone(new_id)
 
