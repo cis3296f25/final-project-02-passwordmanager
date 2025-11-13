@@ -20,8 +20,8 @@ class MainWindow(QMainWindow):
         self.setWindowTitle(Strings.APP_NAME)
         self.setWindowIcon(QIcon(Strings.WINDOW_ICON_PATH))
         self.setGeometry(200, 200, 475, 400)  # x, y, width, height
-        self.setMinimumWidth(525)
-        self.setMinimumHeight(600)
+        self.setMinimumWidth(475)
+        self.setMinimumHeight(400)
 
         self.setStyleSheet(f"background-color: {Colors.DARK_GREY};")
 
