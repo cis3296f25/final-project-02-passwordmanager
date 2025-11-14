@@ -5,7 +5,7 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtGui import QFont
 import apiCallerMethods
 from resources.colors import Colors
-from resources.strings import Strings
+
 
 class AddCredentialsDialog(QDialog):
     def __init__(self, parent=None):
@@ -40,12 +40,27 @@ class AddCredentialsDialog(QDialog):
         self.generate_button = QPushButton("Generate Password")
         self.save_button = QPushButton("Save Credential")
 
-        button_style = Strings.LARGE_BUTTON_STYLE
+        self.cancel_button = QPushButton("Cancel")
+        self.cancel_button.clicked.connect(self.close)
+
+        button_style = f"""
+            QPushButton {{
+                background-color: {Colors.BRAT_GREEN};
+                color: {Colors.WHITE};
+                border-radius: 10px;
+                padding: 6px;
+            }}
+            QPushButton:hover {{
+                background-color: {Colors.BRAT_GREEN_BUTTON_HOVER};
+            }}
+        """
         self.generate_button.setStyleSheet(button_style)
         self.save_button.setStyleSheet(button_style)
+        self.cancel_button.setStyleSheet(button_style)
 
         button_layout.addWidget(self.generate_button)
         button_layout.addWidget(self.save_button)
+        button_layout.addWidget(self.cancel_button)
         layout.addLayout(button_layout)
 
         # Status label
@@ -80,6 +95,7 @@ class AddCredentialsDialog(QDialog):
             response = apiCallerMethods.add_credential(site, username, password)
             if "status" in response and response["status"] == "added":
                 self.status_label.setText("Credential added successfully.")
+                self.accept() # close dialog after successful save
             else:
                 self.status_label.setText(f"Error: {response.get('error', 'Unknown')}")
         except Exception as e:
