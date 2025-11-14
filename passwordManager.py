@@ -4,12 +4,21 @@ from flask import Flask, request, jsonify
 from cryptography.fernet import Fernet
 import secrets
 import os
+import sys
 
 from kdf import default_kdf_params, derive_wrap_key
 from vmk import generate_vmk, unwrap_vmk, wrap_vmk
 
 # Database stuff (to be refactored into repository later) #################################
-conn = sqlite3.connect("vault.db", check_same_thread=False)
+def get_base_path():
+    if getattr(sys, 'frozen', False):
+        app_path = os.path.dirname(sys.executable)
+    else: 
+        app_path = os.path.dirname(os.path.abspath(__file__))
+    return app_path
+
+db_path = os.path.join(get_base_path(), "vault.db")
+conn = sqlite3.connect(db_path, check_same_thread=False)
 c = conn.cursor()
 c.execute("""
 CREATE TABLE IF NOT EXISTS credentials (

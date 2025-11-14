@@ -59,13 +59,14 @@ class TestApiCallerMethods(unittest.TestCase):
     def test_update_credential(self):
         # create a credential
         site = "acm-upd-" + "".join(random.choices(string.digits, k=6))
-        acm.add_credential(site, "apiuser", "oldpass")
+        username = "apiuser"
+        acm.add_credential(site, username, "oldpass")
         creds = acm.get_all_credentials()
         match = next((i for i in creds if i.get("site") == site), None)
         self.assertIsNotNone(match, "credential not found after creation")
         cred_id = match.get("id")
         # exercise PUT update and response.json()
-        result = acm.update_credential(cred_id, "newpass")
+        result = acm.update_credential(cred_id, site, username, "newpass")
         self.assertIsInstance(result, dict)
         self.assertEqual(result.get("status"), "updated")
         self.assertEqual(result.get("id"), cred_id)

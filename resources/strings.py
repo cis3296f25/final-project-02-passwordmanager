@@ -1,13 +1,23 @@
+import os
+import sys
+
 from resources.colors import Colors
+
+def get_resource_path(relative_path):
+    if getattr(sys, 'frozen', False):
+        base_path = sys._MEIPASS
+    else:
+        base_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    return os.path.join(base_path, relative_path)
 
 class Strings:
     APP_NAME = "Offline Password Manager"
 
     # image paths
-    WINDOW_ICON_PATH = "resources/images/windowIcon.png"
-    DELETE_ICON_PATH = "resources/images/deleteButtonIcon.png"
-    EDIT_ICON_PATH = "resources/images/editButtonIcon.png"
-    COPY_ICON_PATH = "resources/images/copyButtonIcon.png"
+    WINDOW_ICON_PATH = get_resource_path("resources/images/windowIcon.png")
+    DELETE_ICON_PATH = get_resource_path("resources/images/deleteButtonIcon.png")
+    EDIT_ICON_PATH = get_resource_path("resources/images/editButtonIcon.png")
+    COPY_ICON_PATH = get_resource_path("resources/images/copyButtonIcon.png")
     
 
     # style sheets:
