@@ -7,6 +7,7 @@ import os
 
 from kdf import default_kdf_params, derive_wrap_key
 from vmk import generate_vmk, unwrap_vmk, wrap_vmk
+from apiPasswordStrength import get_password_strength
 
 # Database stuff (to be refactored into repository later) #################################
 conn = sqlite3.connect("vault.db", check_same_thread=False)
@@ -90,6 +91,13 @@ def add_credential():
         return jsonify({"error": "Not logged in"}), 401
 
     data = request.json
+    password = data.get("password", "")
+
+    # Password strength check
+    strength = get_password_strength(password)
+    if strength == "weak":
+        return jsonify({"error": "Password too weak", "strength": strength}), 400
+
     encrypted_password = current_vmk_cipher.encrypt(data["password"].encode())
     c.execute(
         "INSERT INTO credentials (site, username, password) VALUES (?, ?, ?)",
@@ -182,6 +190,13 @@ def update_password():
     if current_vmk_cipher is None:
         return jsonify({"error": "Not logged in"}), 401
     data = request.json
+    password = data.get("password", "")
+
+    # Password strength check
+    strength = get_password_strength(password)
+    if strength == "weak":
+        return jsonify({"error": "Password too weak", "strength": strength}), 400
+
     cred_id = data.get("id")
     if cred_id is None:
         return jsonify({"error": "missing id"}), 400
