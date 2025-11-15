@@ -10,6 +10,8 @@ from kdf import default_kdf_params, derive_wrap_key
 from vmk import generate_vmk, unwrap_vmk, wrap_vmk
 
 # Database stuff (to be refactored into repository later) #################################
+DB_FILENAME = "vault.db"
+
 def get_base_path():
     if getattr(sys, 'frozen', False):
         app_path = os.path.dirname(sys.executable)
@@ -17,7 +19,7 @@ def get_base_path():
         app_path = os.path.dirname(os.path.abspath(__file__))
     return app_path
 
-db_path = os.path.join(get_base_path(), "vault.db")
+db_path = os.path.join(get_base_path(), DB_FILENAME)
 conn = sqlite3.connect(db_path, check_same_thread=False)
 c = conn.cursor()
 c.execute("""
