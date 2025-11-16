@@ -3,3 +3,4 @@ Flask==3.0.3
 argon2-cffi>=23.1.0
 PyQt6
 requests
+coverage

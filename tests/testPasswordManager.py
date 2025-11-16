@@ -4,6 +4,8 @@ import string
 import sqlite3
 import tempfile
 import os
+import sys
+from unittest.mock import patch
 from passwordManager import app, c, conn
 import passwordManager as pm
 
@@ -223,22 +225,22 @@ class TestVaultAPI(unittest.TestCase):
         self.assertIsNotNone(cid)
 
         # missing id
-        self.assertEqual(self.client.put("/update", json={"password":"np"}).status_code, 400)
+        self.assertEqual(self.client.put("/update", json={"site":"updsite","username":"u","password":"np"}).status_code, 400)
 
         # locked
         self.client.post("/lock")
-        self.assertEqual(self.client.put("/update", json={"id":cid,"password":"np"}).status_code, 423)
+        self.assertEqual(self.client.put("/update", json={"id":cid,"site":"updsite","username":"u","password":"np"}).status_code, 423)
         self.client.post("/unlock")
 
         # not logged in
         self.client.post("/account/logout")
         # logout locks vault; unlock to test 401
         self.client.post("/unlock")
-        self.assertEqual(self.client.put("/update", json={"id":cid,"password":"np"}).status_code, 401)
+        self.assertEqual(self.client.put("/update", json={"id":cid,"site":"updsite","username":"u","password":"np"}).status_code, 401)
 
         # success (relogin)
         self.client.post("/account/login", json={"username":"unittest-user","master_password":"unittest-pass"})
-        r = self.client.put("/update", json={"id":cid,"password":"np"})
+        r = self.client.put("/update", json={"id":cid,"site":"updsite","username":"u","password":"np"})
         self.assertEqual(r.status_code, 200)
         self.assertEqual(r.get_json().get("status"), "updated")
 
@@ -289,3 +291,13 @@ class TestVaultAPI(unittest.TestCase):
             os.remove(tmp_path)
             pm.conn = old_conn
             pm.c = old_c
+            
+    def test_db_path(self):
+        self.assertIsNotNone(pm.db_path)
+    
+    def test_get_base_path_frozen(self):
+        with patch.object(pm.sys, 'frozen', True, create=True):
+            with patch.object(pm.sys, 'executable', '/fake/path/to/executable'):
+                expected_path = os.path.dirname('/fake/path/to/executable')
+                result = pm.get_base_path()
+                self.assertEqual(result, expected_path)
