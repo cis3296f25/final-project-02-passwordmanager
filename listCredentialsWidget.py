@@ -9,6 +9,7 @@ import apiCallerMethods
 from resources.colors import Colors
 from resources.strings import Strings
 
+
 class ListCredentialsWidget(QWidget):
     def __init__(self):
         super().__init__()
@@ -21,7 +22,7 @@ class ListCredentialsWidget(QWidget):
         self.scroll_area.setWidgetResizable(True)
         self.scroll_area.setStyleSheet("border: none;")
         layout.addWidget(self.scroll_area)
-        
+
         # inner rectangular container for credentials cards
         self.credentials_container = QWidget()
         self.credentials_layout = QVBoxLayout(self.credentials_container)
@@ -58,54 +59,86 @@ class ListCredentialsWidget(QWidget):
         card_layout = QHBoxLayout(card)
         card_layout.setContentsMargins(10, 5, 10, 5)
 
+        # actual password text
+        password_text = cred.get("password", "")
+
         # display for website, username, ••••••••
         site = QLabel(f"{cred['site']}")
         username = QLabel(f"{cred['username']}")
-        password = QLabel("••••••••")
+        # show bullets by default, one per character (or 8 if empty)
+        bullet_count = len(password_text) if password_text else 8
+        password_label = QLabel("•" * bullet_count)
 
-        # font
-        for label in (site, username, password):
+        # font / color
+        for label in (site, username, password_label):
             label.setStyleSheet(f"color: {Colors.WHITE}; font-size: 12px;")
 
         # buttons
         copy_button = QPushButton()
         edit_button = QPushButton()
         delete_button = QPushButton()
+        show_button = QPushButton("👁")  # show/hide password toggle
 
-        copy_icon = QIcon(QPixmap(Strings.COPY_ICON_PATH)) 
-        edit_icon = QIcon(QPixmap(Strings.EDIT_ICON_PATH)) 
-        delete_icon = QIcon(QPixmap(Strings.DELETE_ICON_PATH)) 
+        copy_icon = QIcon(QPixmap(Strings.COPY_ICON_PATH))
+        edit_icon = QIcon(QPixmap(Strings.EDIT_ICON_PATH))
+        delete_icon = QIcon(QPixmap(Strings.DELETE_ICON_PATH))
 
         copy_button.setIcon(copy_icon)
         edit_button.setIcon(edit_icon)
         delete_button.setIcon(delete_icon)
 
+        # styling
         copy_button.setStyleSheet(Strings.SMALL_BUTTON_STYLE)
         edit_button.setStyleSheet(Strings.SMALL_BUTTON_STYLE)
         delete_button.setStyleSheet(Strings.DELETE_BUTTON_STYLE)
+        show_button.setStyleSheet(Strings.SMALL_BUTTON_STYLE)
 
-        copy_button.clicked.connect(lambda _, p=cred['password']: self.copy_to_clipboard(p, copy_button))
+        # copy password to clipboard
+        copy_button.clicked.connect(
+            lambda _, p=password_text: self.copy_to_clipboard(p, copy_button)
+        )
+
+        # per-row visibility state
+        is_visible = {"value": False}
+
+        def toggle_password():
+            if is_visible["value"]:
+                # hide password
+                password_label.setText("•" * bullet_count)
+                show_button.setText("👁")
+                is_visible["value"] = False
+            else:
+                # show password
+                password_label.setText(password_text)
+                show_button.setText("🙈")
+                is_visible["value"] = True
+
+        show_button.clicked.connect(toggle_password)
+
+        # lay out widgets
+        card_layout.addWidget(site)
+        card_layout.addWidget(username)
+        card_layout.addWidget(password_label)
 
         button_layout = QHBoxLayout()
+        # put the eye next to the password, before the other action buttons
+        button_layout.addWidget(show_button)
         button_layout.addWidget(copy_button)
         button_layout.addWidget(edit_button)
         button_layout.addWidget(delete_button)
 
-
-        card_layout.addWidget(site)
-        card_layout.addWidget(username)
-        card_layout.addWidget(password)
         card_layout.addLayout(button_layout)
 
-        card.setStyleSheet(f"""
+        card.setStyleSheet(
+            f"""
             background-color: {Colors.LIGHT_GREY};
             border-radius: 10px;
             padding: 6px;
-        """)
+        """
+        )
 
         self.credentials_layout.addWidget(card)
 
     def copy_to_clipboard(self, password, copy_button):
         QApplication.clipboard().setText(password)
-
         print("Copied password")

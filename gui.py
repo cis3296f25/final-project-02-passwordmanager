@@ -59,25 +59,30 @@ class MainWindow(QMainWindow):
         overlay.setStyleSheet("background-color: rgba(0, 0, 0, 150);")  # translucent overlay
         overlay.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, False)
         overlay.show()
-        
-        dialog = AddCredentialsDialog(self)  # Pass self as parent so it stays centered
-        dialog.adjustSize() 
 
-        #Center dialog relative to main window
+        dialog = AddCredentialsDialog(self)  # Pass self as parent so it stays centered
+        dialog.adjustSize()
+
+        # Center dialog relative to main window
         parent_rect = self.frameGeometry()
         dialog_rect = dialog.frameGeometry()
-
         dialog_rect.moveCenter(parent_rect.center())
         dialog.move(dialog_rect.topLeft())
-        dialog.exec()
+
+        result = dialog.exec()
 
         overlay.deleteLater()
-        self.refresh_credentials()
 
+        # Only refresh if dialog closed with accept() (i.e., successful save)
+        if result == QDialog.DialogCode.Accepted:
+            self.refresh_credentials()
     def refresh_credentials(self):
         self.credentials_list.load_credentials()
-    
+   
     def center(self):
+        """
+        Center the main window on the primary screen.
+        """
         screen = QApplication.primaryScreen()
         if screen is None:
             return
