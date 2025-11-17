@@ -18,7 +18,7 @@ class Strings:
     DELETE_ICON_PATH = get_resource_path("resources/images/deleteButtonIcon.png")
     EDIT_ICON_PATH = get_resource_path("resources/images/editButtonIcon.png")
     COPY_ICON_PATH = get_resource_path("resources/images/copyButtonIcon.png")
-    
+    CHECK_ICON_PATH = get_resource_path("resources/images/checkButtonIcon.png")
 
     # style sheets:
     LARGE_BUTTON_STYLE = f"""
@@ -36,6 +36,17 @@ class Strings:
                 border: 2px solid {Colors.BRAT_GREEN_BUTTON_PRESSED};
             }}
         """
+    button_style = f"""
+        QPushButton {{
+            background-color: {Colors.BRAT_GREEN};
+            color: {Colors.WHITE};
+            border-radius: 10px;
+            padding: 6px;
+        }}
+        QPushButton:hover {{
+            background-color: {Colors.BRAT_GREEN_BUTTON_HOVER};
+        }}
+    """
     SMALL_BUTTON_STYLE = f"""
             QPushButton {{
                 background-color: {Colors.BRAT_GREEN};
