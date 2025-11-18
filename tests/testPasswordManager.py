@@ -6,8 +6,9 @@ import tempfile
 import os
 import sys
 from unittest.mock import patch
-from passwordManager import app, c, conn
-import passwordManager as pm
+from passwordmanager.api.routes import app
+from passwordmanager.core.passwordManager import c, conn
+import passwordmanager.core.passwordManager as pm
 
 class TestVaultAPI(unittest.TestCase):
     @classmethod
@@ -216,31 +217,35 @@ class TestVaultAPI(unittest.TestCase):
         self.client.post("/account/login", json={"username":"unittest-user","master_password":"unittest-pass"})
 
     def test_update_errors_and_success(self):
+        # Generate strong passwords for this test
+        initial_password = "Pass123!" + "".join(random.choices(string.ascii_letters + string.digits, k=4))
+        update_password = "NewPass123!" + "".join(random.choices(string.ascii_letters + string.digits, k=4))
+        
         # ensure logged in for creation
         self.client.post("/account/login", json={"username":"unittest-user","master_password":"unittest-pass"})
         # create a row first
-        add = self.client.post("/add", json={"site":"updsite","username":"u","password":"p"})
+        add = self.client.post("/add", json={"site":"updsite","username":"u","password":initial_password})
         self.assertEqual(add.status_code, 201)
         cid = add.get_json().get("id")
         self.assertIsNotNone(cid)
 
         # missing id
-        self.assertEqual(self.client.put("/update", json={"site":"updsite","username":"u","password":"np"}).status_code, 400)
+        self.assertEqual(self.client.put("/update", json={"site":"updsite","username":"u","password":update_password}).status_code, 400)
 
         # locked
         self.client.post("/lock")
-        self.assertEqual(self.client.put("/update", json={"id":cid,"site":"updsite","username":"u","password":"np"}).status_code, 423)
+        self.assertEqual(self.client.put("/update", json={"id":cid,"site":"updsite","username":"u","password":update_password}).status_code, 423)
         self.client.post("/unlock")
 
         # not logged in
         self.client.post("/account/logout")
         # logout locks vault; unlock to test 401
         self.client.post("/unlock")
-        self.assertEqual(self.client.put("/update", json={"id":cid,"site":"updsite","username":"u","password":"np"}).status_code, 401)
+        self.assertEqual(self.client.put("/update", json={"id":cid,"site":"updsite","username":"u","password":update_password}).status_code, 401)
 
         # success (relogin)
         self.client.post("/account/login", json={"username":"unittest-user","master_password":"unittest-pass"})
-        r = self.client.put("/update", json={"id":cid,"site":"updsite","username":"u","password":"np"})
+        r = self.client.put("/update", json={"id":cid,"site":"updsite","username":"u","password":update_password})
         self.assertEqual(r.status_code, 200)
         self.assertEqual(r.get_json().get("status"), "updated")
 

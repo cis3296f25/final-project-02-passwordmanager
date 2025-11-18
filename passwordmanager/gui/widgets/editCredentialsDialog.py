@@ -3,7 +3,7 @@ from PyQt6.QtWidgets import (
     QDialog, QLineEdit, QFormLayout, QHBoxLayout
 )
 from PyQt6.QtGui import QFont
-import apiCallerMethods
+from passwordmanager.api import apiCallerMethods
 from resources.colors import Colors
 from resources.strings import Strings
 

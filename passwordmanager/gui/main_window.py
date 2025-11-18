@@ -6,12 +6,12 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt, QPoint
 from PyQt6.QtGui import QFont, QIcon
 import sys
-import apiCallerMethods
+from passwordmanager.api import apiCallerMethods
 from resources.colors import Colors
 from resources.strings import Strings
-from listCredentialsWidget import ListCredentialsWidget
-from addCredentialsDialog import AddCredentialsDialog
-from settingsDialog import settingsDialog
+from passwordmanager.gui.widgets.listCredentialsWidget import ListCredentialsWidget
+from passwordmanager.gui.widgets.addCredentialsDialog import AddCredentialsDialog
+from passwordmanager.gui.settingsDialog import settingsDialog
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -42,7 +42,7 @@ class MainWindow(QMainWindow):
         add_button = QPushButton("Add New Credential")
         settings_button = QPushButton("Settings")
         exit_button = QPushButton("Exit")
-        
+
         # button styling
         add_button.setStyleSheet(Strings.LARGE_BUTTON_STYLE)
         settings_button.setStyleSheet(Strings.LARGE_BUTTON_STYLE)
@@ -51,12 +51,12 @@ class MainWindow(QMainWindow):
         layout.addWidget(add_button)
         layout.addWidget(settings_button)
         layout.addWidget(exit_button)
-        
+
         # Connect buttons
         add_button.clicked.connect(self.open_add_dialog)
         exit_button.clicked.connect(self.close)
         settings_button.clicked.connect(self.open_settings_dialog)
-
+        
     # Open the Add Credentials dialog
     def open_add_dialog(self):
         overlay = QWidget(self)
@@ -74,10 +74,13 @@ class MainWindow(QMainWindow):
 
         dialog_rect.moveCenter(parent_rect.center())
         dialog.move(dialog_rect.topLeft())
-        dialog.exec()
+        result = dialog.exec()
 
         overlay.deleteLater()
-        self.refresh_credentials()
+        
+        # Only refresh if dialog closed with accept() (i.e., successful save)
+        if result == QDialog.DialogCode.Accepted:
+            self.refresh_credentials()
 
     def open_settings_dialog(self):
         overlay = QWidget(self)
@@ -99,7 +102,7 @@ class MainWindow(QMainWindow):
 
         overlay.deleteLater()
         self.refresh_credentials()
-        
+
     def refresh_credentials(self):
         self.credentials_list.load_credentials()
     

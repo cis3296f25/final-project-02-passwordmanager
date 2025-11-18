@@ -4,7 +4,7 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtGui import QFont, QIcon
 from resources.colors import Colors
 from resources.strings import Strings
-import apiCallerMethods
+from passwordmanager.api import apiCallerMethods
 
 
 class LoginDialog(QDialog):

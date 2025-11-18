@@ -1,0 +1,13 @@
+[run]
+omit =
+    */tests/*
+    */passwordmanager/gui/*
+    */venv/*
+    */build/*
+    */dist/*
+    ./main.py
+
+[report]
+exclude_lines =
+    pragma: no cover
+
