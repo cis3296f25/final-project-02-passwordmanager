@@ -1,10 +1,10 @@
-from gui import MainWindow
-from login import LoginDialog
+from passwordmanager.gui.main_window import MainWindow
+from passwordmanager.gui.login_dialogue import LoginDialog
 from PyQt6.QtWidgets import QApplication, QDialog
 import sys
 import threading
 import time
-from passwordManager import app
+from passwordmanager.api.routes import app
 
 #####
 # Main entry point for PasswordManager GUI application

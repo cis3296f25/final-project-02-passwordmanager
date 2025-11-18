@@ -3,8 +3,9 @@ import threading
 import time
 import random
 import string
-from passwordManager import app
-import apiCallerMethods as acm
+from passwordmanager.api.routes import app
+from passwordmanager.api.apiCallerMethods import *
+import passwordmanager.api.apiCallerMethods as acm
 
 class TestApiCallerMethods(unittest.TestCase):
     @classmethod
@@ -23,7 +24,7 @@ class TestApiCallerMethods(unittest.TestCase):
             time.sleep(0.1)
         # ensure an account and login
         cls.username = "acm_user_" + "".join(random.choices(string.digits, k=6))
-        cls.password = "acm_pw_" + "".join(random.choices(string.ascii_letters, k=6))
+        cls.password = "TestPass123!" + "".join(random.choices(string.ascii_letters + string.digits, k=4))
         acm.account_create(cls.username, cls.password)
         acm.account_login(cls.username, cls.password)
 
@@ -38,7 +39,7 @@ class TestApiCallerMethods(unittest.TestCase):
     def test_get_credential(self):
         # create isolated credential
         site = "acm-get-" + "".join(random.choices(string.digits, k=6))
-        acm.add_credential(site, "apiuser", "apipass")
+        acm.add_credential(site, "apiuser", "ApiPass123!")
         creds = acm.get_all_credentials()
         match = next((i for i in creds if i.get("site") == site), None)
         self.assertIsNotNone(match, "credential not found after creation")
@@ -60,26 +61,26 @@ class TestApiCallerMethods(unittest.TestCase):
         # create a credential
         site = "acm-upd-" + "".join(random.choices(string.digits, k=6))
         username = "apiuser"
-        acm.add_credential(site, username, "oldpass")
+        acm.add_credential(site, username, "OldPass123!")
         creds = acm.get_all_credentials()
         match = next((i for i in creds if i.get("site") == site), None)
         self.assertIsNotNone(match, "credential not found after creation")
         cred_id = match.get("id")
         # exercise PUT update and response.json()
-        result = acm.update_credential(cred_id, site, username, "newpass")
+        result = acm.update_credential(cred_id, site, username, "NewPass123!")
         self.assertIsInstance(result, dict)
         self.assertEqual(result.get("status"), "updated")
         self.assertEqual(result.get("id"), cred_id)
         # verify update took effect
         fetched = acm.get_credential(cred_id)
-        self.assertEqual(fetched.get("password"), "newpass")
+        self.assertEqual(fetched.get("password"), "NewPass123!")
         # cleanup
         acm.delete_credential(cred_id)
 
     def test_delete_credential(self):
         # create then delete isolated credential
         site = "acm-del-" + "".join(random.choices(string.digits, k=6))
-        acm.add_credential(site, "apiuser", "apipass")
+        acm.add_credential(site, "apiuser", "ApiPass123!")
         creds = acm.get_all_credentials()
         match = next((i for i in creds if i.get("site") == site), None)
         self.assertIsNotNone(match, "credential not found after creation")
@@ -87,3 +88,28 @@ class TestApiCallerMethods(unittest.TestCase):
         data = acm.delete_credential(cred_id)
         self.assertIsInstance(data, dict)
         self.assertEqual(data.get("id"), cred_id)
+
+    def test_add_credential(self):
+        # dedicated test for add_credential function
+        site = "acm-add-" + "".join(random.choices(string.digits, k=6))
+        username = "testuser"
+        password = "TestPass123!"
+        result = acm.add_credential(site, username, password)
+        self.assertIsInstance(result, dict)
+        self.assertIn("id", result)
+        self.assertEqual(result.get("status"), "added")
+        # cleanup
+        cred_id = result.get("id")
+        acm.delete_credential(cred_id)
+
+    def test_account_create_and_login(self):
+        # dedicated test for account functions
+        test_username = "test_account_" + "".join(random.choices(string.digits, k=6))
+        test_password = "TestPass123!" + "".join(random.choices(string.ascii_letters + string.digits, k=4))
+        create_result = acm.account_create(test_username, test_password)
+        self.assertIsInstance(create_result, dict)
+        self.assertEqual(create_result.get("status"), "account created")
+        
+        login_result = acm.account_login(test_username, test_password)
+        self.assertIsInstance(login_result, dict)
+        self.assertEqual(login_result.get("status"), "logged in")

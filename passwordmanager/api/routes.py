@@ -1,72 +1,12 @@
 import json
-import sqlite3
 from flask import Flask, request, jsonify
 from cryptography.fernet import Fernet
 import secrets
 import os
-import sys
 
-from kdf import default_kdf_params, derive_wrap_key
-from vmk import generate_vmk, unwrap_vmk, wrap_vmk
-from apiPasswordStrength import get_password_strength
-
-# Database stuff (to be refactored into repository later) #################################
-DB_FILENAME = "vault.db"
-
-def get_base_path():
-    if getattr(sys, 'frozen', False):
-        app_path = os.path.dirname(sys.executable)
-    else: 
-        app_path = os.path.dirname(os.path.abspath(__file__))
-    return app_path
-
-db_path = os.path.join(get_base_path(), DB_FILENAME)
-conn = sqlite3.connect(db_path, check_same_thread=False)
-c = conn.cursor()
-c.execute("""
-CREATE TABLE IF NOT EXISTS credentials (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    site TEXT,
-    username TEXT,
-    password BLOB
-)
-""")
-c.execute("""
-CREATE TABLE IF NOT EXISTS user_metadata (
-    username TEXT PRIMARY KEY,
-    wrapped_vmk BLOB NOT NULL,
-    salt BLOB NOT NULL,
-    kdf TEXT NOT NULL,
-    kdf_params TEXT NOT NULL
-)
-""")
-conn.commit()
-###################################################################################
-
-# this is optional, but here for completeness
-# it addresses the case where the credentials table was created earlier before we had the id column
-# it's also aggressively simple: we create a new table with the id field, copy all the data from the old table into the new, drop the old table, and rename the new table to the old table name
-def ensure_credentials_id_column():
-    c.execute("PRAGMA table_info(credentials)")
-    cols = [row[1] for row in c.fetchall()]
-    if "id" not in cols:
-        c.execute("""
-        CREATE TABLE credentials_new (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            site TEXT,
-            username TEXT,
-            password BLOB
-        )
-        """)
-        c.execute("""
-        INSERT INTO credentials_new (site, username, password)
-        SELECT site, username, password FROM credentials
-        """)
-        c.execute("DROP TABLE credentials")
-        c.execute("ALTER TABLE credentials_new RENAME TO credentials")
-        conn.commit()
-
-ensure_credentials_id_column()
+from passwordmanager.core.passwordManager import conn, c
+from passwordmanager.core.kdf import default_kdf_params, derive_wrap_key
+from passwordmanager.core.vmk import generate_vmk, unwrap_vmk, wrap_vmk
 
 # Flask API
 app = Flask(__name__)
@@ -102,12 +42,6 @@ def add_credential():
         return jsonify({"error": "Not logged in"}), 401
 
     data = request.json
-    password = data.get("password", "")
-
-    # Password strength check
-    strength = get_password_strength(password)
-    if strength == "weak":
-        return jsonify({"error": "Password too weak", "strength": strength}), 400
 
     encrypted_password = current_vmk_cipher.encrypt(data["password"].encode())
     c.execute(
@@ -203,12 +137,6 @@ def update_credential():
     if current_vmk_cipher is None:
         return jsonify({"error": "Not logged in"}), 401
     data = request.json
-    password = data.get("password", "")
-
-    # Password strength check
-    strength = get_password_strength(password)
-    if strength == "weak":
-        return jsonify({"error": "Password too weak", "strength": strength}), 400
 
     cred_id = data.get("id")
     if cred_id is None:
@@ -301,3 +229,4 @@ def account_logout():
 if __name__ == "__main__":
     # Run server
     app.run(port=5000)
+

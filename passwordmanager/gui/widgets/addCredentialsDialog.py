@@ -3,7 +3,9 @@ from PyQt6.QtWidgets import (
     QDialog, QLineEdit, QFormLayout, QHBoxLayout
 )
 from PyQt6.QtGui import QFont
-import apiCallerMethods
+from PyQt6.QtCore import Qt
+from passwordmanager.api import apiCallerMethods
+from passwordmanager.utils.apiPasswordStrength import get_password_strength
 from resources.colors import Colors
 
 
@@ -25,9 +27,31 @@ class AddCredentialsDialog(QDialog):
         self.username_input = QLineEdit()
         self.password_input = QLineEdit()
 
+        # password hidden by default
+        self.password_input.setEchoMode(QLineEdit.EchoMode.Password)
+
+        # show password eye
+        password_row = QHBoxLayout()
+        password_row.addWidget(self.password_input)
+
+        self.show_password_button = QPushButton("👁")
+        self.show_password_button.setCheckable(True)
+        self.show_password_button.setFixedWidth(32)
+        self.show_password_button.setStyleSheet(f"""
+            QPushButton {{
+                background-color: transparent;
+                color: {Colors.WHITE};
+                border: none;
+                padding: 0;
+                font-size: 14px;
+            }}
+        """)
+        self.show_password_button.toggled.connect(self.toggle_password_visibility)
+        password_row.addWidget(self.show_password_button)
+        
         form_layout.addRow("Site:", self.site_input)
         form_layout.addRow("Username:", self.username_input)
-        form_layout.addRow("Password:", self.password_input)
+        form_layout.addRow("Password:", password_row)
         layout.addLayout(form_layout)
 
         # Password strength label
@@ -54,6 +78,7 @@ class AddCredentialsDialog(QDialog):
                 background-color: {Colors.BRAT_GREEN_BUTTON_HOVER};
             }}
         """
+        
         self.generate_button.setStyleSheet(button_style)
         self.save_button.setStyleSheet(button_style)
         self.cancel_button.setStyleSheet(button_style)
@@ -76,6 +101,15 @@ class AddCredentialsDialog(QDialog):
         # Connect password input to strength checker
         self.password_input.textChanged.connect(self.update_strength_label)
 
+    def toggle_password_visibility(self, checked: bool):
+        if checked:
+            self.password_input.setEchoMode(QLineEdit.EchoMode.Normal)
+            self.show_password_button.setText("🙈")
+        else:
+            self.password_input.setEchoMode(QLineEdit.EchoMode.Password)
+            self.show_password_button.setText("👁")
+        self.password_input.setFocus()
+
     # Generate password via API
     def generate_password(self):
         try:
@@ -88,39 +122,39 @@ class AddCredentialsDialog(QDialog):
     # Save credential to database
     def save_credential(self):
         try:
-            site = self.site_input.text()
-            username = self.username_input.text()
+            site = self.site_input.text().strip()
+            username = self.username_input.text().strip()
             password = self.password_input.text()
+            
+            if not site or not username or not password:
+                self.status_label.setText("Please fill in all fields before saving.")
+                return
 
+            # call API
             response = apiCallerMethods.add_credential(site, username, password)
             if "status" in response and response["status"] == "added":
                 self.status_label.setText("Credential added successfully.")
                 self.accept() # close dialog after successful save
             else:
-                self.status_label.setText(f"Error: {response.get('error', 'Unknown')}")
+                err = None
+                
+                if isinstance(response, dict):
+                    err = response.get("error", "Unknown")
+                else:
+                    err = "Unknown (unexpected response type)"
+                self.status_label.setText(f"Error: {err}")
         except Exception as e:
             self.status_label.setText(f"Error saving credential: {e}")
 
     # Password strength checker
     def update_strength_label(self):
         password = self.password_input.text()
-        score = 0
+        strength = get_password_strength(password)
 
-        if len(password) >= 8:
-            score += 1
-        if any(c.isdigit() for c in password):
-            score += 1
-        if any(c.isupper() for c in password):
-            score += 1
-        if any(c.islower() for c in password):
-            score += 1
-        if any(c in "@$!%*?&#" for c in password):
-            score += 1
-
-        if score <= 2:
+        if strength == "weak":
             self.strength_label.setText("Password strength: Weak")
             self.strength_label.setStyleSheet("color: red;")
-        elif score in [3, 4]:
+        elif strength == "medium":
             self.strength_label.setText("Password strength: Medium")
             self.strength_label.setStyleSheet("color: orange;")
         else:
