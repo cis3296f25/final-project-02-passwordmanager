@@ -7,6 +7,7 @@ from PyQt6.QtCore import Qt, QPoint
 from PyQt6.QtGui import QFont, QIcon
 import sys
 from passwordmanager.api import apiCallerMethods
+from passwordmanager.utils.theme_manager import theme_manager
 from resources.colors import Colors
 from resources.strings import Strings
 from passwordmanager.gui.widgets.listCredentialsWidget import ListCredentialsWidget
@@ -16,6 +17,9 @@ from passwordmanager.gui.settingsDialog import settingsDialog
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
+        
+        # Register with theme manager
+        theme_manager.register_window(self)
 
         # set window
         self.setWindowTitle(Strings.APP_NAME)
@@ -24,7 +28,8 @@ class MainWindow(QMainWindow):
         self.setMinimumWidth(520)
         self.setMinimumHeight(575)
 
-        self.setStyleSheet(f"background-color: {Colors.DARK_GREY};")
+        # Apply initial theme
+        self.apply_theme(theme_manager.current_theme)
 
         # set central widget (similar to panels in jpanel)
         central = QWidget()
@@ -56,6 +61,16 @@ class MainWindow(QMainWindow):
         add_button.clicked.connect(self.open_add_dialog)
         exit_button.clicked.connect(self.close)
         settings_button.clicked.connect(self.open_settings_dialog)
+
+    def apply_theme(self, theme):
+        """Apply theme colors to this window"""
+        colors = theme_manager.get_theme_colors(theme)
+        self.setStyleSheet(f"background-color: {colors['background']}; color: {colors['text']};")
+        
+    def closeEvent(self, event):
+        """Clean up when window is closed"""
+        theme_manager.unregister_window(self)
+        super().closeEvent(event)
         
     # Open the Add Credentials dialog
     def open_add_dialog(self):
@@ -121,7 +136,6 @@ class MainWindow(QMainWindow):
         app = QApplication.instance() or QApplication(sys.argv)
         window = MainWindow()
         window.center()
-        window.show()
         window.show()
         window.refresh_credentials()
         app.exec()

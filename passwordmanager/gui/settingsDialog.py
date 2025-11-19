@@ -111,7 +111,6 @@ class settingsDialog(QDialog):
         base_theme_button_style = f"""
         QPushButton {{
             background-color: {colors['background-button']};
-            color: {colors['input_text']};
             padding: 8px 16px;
             border-radius: 4px;
         }}
@@ -123,7 +122,6 @@ class settingsDialog(QDialog):
         selected_theme_button_style = f"""
         QPushButton {{
             background-color: {colors['background-button']};
-            color: {colors['input_text']};
             border: 2px solid {Colors.BRAT_GREEN};
             padding: 8px 16px;
             border-radius: 4px;

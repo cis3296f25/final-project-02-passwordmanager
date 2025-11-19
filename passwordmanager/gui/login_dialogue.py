@@ -2,6 +2,7 @@ from PyQt6.QtWidgets import (
     QDialog, QVBoxLayout, QFormLayout, QLineEdit, QPushButton, QLabel, QHBoxLayout
 )
 from PyQt6.QtGui import QFont, QIcon
+from passwordmanager.utils.theme_manager import theme_manager
 from resources.colors import Colors
 from resources.strings import Strings
 from passwordmanager.api import apiCallerMethods
@@ -10,9 +11,12 @@ from passwordmanager.api import apiCallerMethods
 class LoginDialog(QDialog):
     def __init__(self):
         super().__init__()
+        
+        # Register with theme manager
+        theme_manager.register_window(self)
+        
         self.setWindowTitle("Login")
         self.setWindowIcon(QIcon(Strings.WINDOW_ICON_PATH))
-        self.setStyleSheet(f"background-color: {Colors.DARK_GREY}; color: {Colors.WHITE};")
         self.setMinimumWidth(320)
 
         layout = QVBoxLayout()
@@ -46,6 +50,28 @@ class LoginDialog(QDialog):
 
         self.login_btn.clicked.connect(self.handle_login)
         self.create_btn.clicked.connect(self.handle_create)
+
+        self.apply_theme(theme_manager.current_theme)
+
+    def apply_theme(self, theme):
+        colors = theme_manager.get_theme_colors(theme)
+        
+        self.setStyleSheet(f"""
+        QDialog {{
+            background-color: {colors['background']};
+            color: {colors['text']};
+        }}
+        QLabel {{
+            background-color: {colors['background']};
+            color: {colors['text']};
+        }}
+        QLineEdit {{
+            background-color: {colors['background-button']};
+            color: {colors['input_text']};
+            padding: 5px;
+            border-radius: 4px;
+        }}
+        """)
 
     def handle_login(self):
         try:
