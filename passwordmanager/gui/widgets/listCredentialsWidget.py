@@ -1,6 +1,6 @@
 from PyQt6.QtWidgets import (
     QApplication, QPushButton, QWidget, QVBoxLayout, QLabel,
-    QHBoxLayout, QScrollArea
+    QHBoxLayout, QScrollArea, QLineEdit
 )
 from PyQt6.QtGui import QFont, QClipboard, QIcon, QPixmap, QCursor
 from PyQt6.QtCore import Qt 
@@ -19,6 +19,21 @@ class ListCredentialsWidget(QWidget):
     
         # outer layout
         layout = QVBoxLayout(self)
+
+        #search bar
+        self.search_bar = QLineEdit()
+        self.search_bar.setPlaceholderText("Search by site or username")
+        self.search_bar.setStyleSheet(f"""
+            QLineEdit {{
+                background-color: {Colors.LIGHT_GREY};
+                color: {Colors.WHITE};
+                border-radius: 10px;
+                padding: 6px;
+                font-size: 12px;
+            }}
+        """)
+        self.search_bar.textChanged.connect(self.filter_credentials)
+        layout.addWidget(self.search_bar)
 
         # scrollable area
         self.scroll_area = QScrollArea()
@@ -61,6 +76,8 @@ class ListCredentialsWidget(QWidget):
             error_label.setStyleSheet(f"color: {colors['text']};")
             self.credentials_layout.addWidget(error_label)
 
+        self.search_bar.clear() #sets search bar to empty
+
     # create a rectangular card for one credential
     def add_credential_card(self, cred):
         colors = theme_manager.get_theme_colors()
@@ -75,7 +92,10 @@ class ListCredentialsWidget(QWidget):
 
         # display for website, username, ••••••••
         site = QLabel(f"{cred['site']}")
+        site.setObjectName("site_label") # set obj name for searching
         username = QLabel(f"{cred['username']}")
+        username.setObjectName("username_label") # set obj name for searching
+
         # show 12 bullets by default to hide password length
         password_label = QLabel("•" * 12)
 
@@ -185,3 +205,32 @@ class ListCredentialsWidget(QWidget):
         overlay.deleteLater()
         self.load_credentials()
 
+    def filter_credentials(self):
+        search_text = self.search_bar.text().lower()
+
+        # loop thru all elements in widget; linear search
+        for i in range(self.credentials_layout.count()):
+            item = self.credentials_layout.itemAt(i)
+            card = item.widget()
+
+            if not card:
+                    continue
+            
+            # labels from above
+            site_label = card.findChild(QLabel, "site_label")
+            username_label = card.findChild(QLabel, "username_label")
+
+            # this handles scenario where theres no credentials (i.e. no children)
+            if not site_label or not username_label:
+                if isinstance(card, QLabel):
+                    card.setHidden(bool(search_text))
+                continue
+
+            # check for match in either field
+            site_match = search_text in site_label.text().lower()
+            username_match = search_text in username_label.text().lower()
+
+            if site_match or username_match:
+                card.show()
+            else:
+                card.hide()
