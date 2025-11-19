@@ -1,35 +1,53 @@
 # apiPasswordStrength.py
 
-def get_password_score(password: str) -> int:
-    # Returns a strength score from 0–5
-    score = 0
+import math
+import string
 
-    if len(password) >= 8:
-        score += 1
-    if any(c.isdigit() for c in password):
-        score += 1
-    if any(c.isupper() for c in password):
-        score += 1
-    if any(c.islower() for c in password):
-        score += 1
-    if any(c in "@$!%*?&#" for c in password):
-        score += 1
+CHAR_SETS = {
+    "lower": string.ascii_lowercase,
+    "upper": string.ascii_uppercase,
+    "digits": string.digits,
+    "symbols": "!@#$%^&*()-_=+[]{};:,.<>?/|\\"
+}
 
-    return score
+
+def calculate_entropy(password: str) -> float:
+    # Calculate password entropy based on E = L * log2(R).
+
+    if not password:
+        return 0.0
+
+    R = 0  # size of total char set used
+
+    # Detect which character sets appear in the password
+    for charset in CHAR_SETS.values():
+        if any(c in charset for c in password):
+            R += len(charset)
+
+    L = len(password)
+
+    if R == 0:
+        return 0.0
+
+    entropy = L * math.log2(R)
+    return entropy
 
 
 def get_password_strength(password: str) -> str:
-    #Returns: 'weak', 'medium', or 'strong'
-    score = get_password_score(password)
+    # Return 'weak', 'medium', or 'strong' based only on entropy
+    entropy = calculate_entropy(password)
 
-    if score <= 2:
+    # Entropy thresholds
+    if entropy < 40:
         return "weak"
-    elif score in (3, 4):
+    elif entropy < 60:
         return "medium"
     else:
         return "strong"
 
 
-""" if __name__ == "__main__":
-    test_pw = input("Enter password to test: ")
-    print(check_password_strength(test_pw)) """
+# Manual test
+if __name__ == "__main__":
+    pw = input("Enter password: ")
+    e = calculate_entropy(pw)
+    print(f"Entropy: {e:.2f} bits — Strength: {get_password_strength(pw)}")

@@ -5,6 +5,7 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtGui import QFont
 import apiCallerMethods
 from resources.colors import Colors
+from apiPasswordStrength import calculate_entropy, get_password_strength
 
 
 class AddCredentialsDialog(QDialog):
@@ -101,28 +102,23 @@ class AddCredentialsDialog(QDialog):
         except Exception as e:
             self.status_label.setText(f"Error saving credential: {e}")
 
-    # Password strength checker
+    # Password strength checker 
     def update_strength_label(self):
         password = self.password_input.text()
-        score = 0
 
-        if len(password) >= 8:
-            score += 1
-        if any(c.isdigit() for c in password):
-            score += 1
-        if any(c.isupper() for c in password):
-            score += 1
-        if any(c.islower() for c in password):
-            score += 1
-        if any(c in "@$!%*?&#" for c in password):
-            score += 1
+        entropy = calculate_entropy(password)
+        strength = get_password_strength(password)
 
-        if score <= 2:
-            self.strength_label.setText("Password strength: Weak")
-            self.strength_label.setStyleSheet("color: red;")
-        elif score in [3, 4]:
-            self.strength_label.setText("Password strength: Medium")
-            self.strength_label.setStyleSheet("color: orange;")
+        if strength == "weak":
+            color = "red"
+        elif strength == "medium":
+            color = "orange"
         else:
-            self.strength_label.setText("Password strength: Strong")
-            self.strength_label.setStyleSheet("color: lightgreen;")
+            color = "lightgreen"
+
+        self.strength_label.setText(
+            f"Password strength: {strength.capitalize()}  ({entropy:.1f} bits)"
+        )
+        self.strength_label.setStyleSheet(f"color: {color};")  
+
+ 
