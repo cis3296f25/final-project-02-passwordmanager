@@ -6,16 +6,20 @@ from PyQt6.QtGui import QFont
 from PyQt6.QtCore import Qt
 from passwordmanager.api import apiCallerMethods
 from passwordmanager.utils.apiPasswordStrength import get_password_strength
+from passwordmanager.utils.theme_manager import theme_manager
 from resources.colors import Colors
+from resources.strings import Strings  
 
 
 class AddCredentialsDialog(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
+        
+        # Register with theme manager
+        theme_manager.register_window(self)
 
         # Window setup
         self.setWindowTitle("Add New Credential")
-        self.setStyleSheet(f"background-color: {Colors.DARK_GREY}; color: {Colors.WHITE};")
         self.setMinimumWidth(300)
 
         # Main layout
@@ -33,55 +37,37 @@ class AddCredentialsDialog(QDialog):
         # show password eye
         password_row = QHBoxLayout()
         password_row.addWidget(self.password_input)
+        
+        button_style = Strings.SMALL_BUTTON_STYLE
 
         self.show_password_button = QPushButton("👁")
         self.show_password_button.setCheckable(True)
         self.show_password_button.setFixedWidth(32)
-        self.show_password_button.setStyleSheet(f"""
-            QPushButton {{
-                background-color: transparent;
-                color: {Colors.WHITE};
-                border: none;
-                padding: 0;
-                font-size: 14px;
-            }}
-        """)
+        self.show_password_button.setStyleSheet(Strings.EYE_BUTTON_STYLE)
         self.show_password_button.toggled.connect(self.toggle_password_visibility)
         password_row.addWidget(self.show_password_button)
-        
+
         form_layout.addRow("Site:", self.site_input)
         form_layout.addRow("Username:", self.username_input)
         form_layout.addRow("Password:", password_row)
+
         layout.addLayout(form_layout)
 
         # Password strength label
         self.strength_label = QLabel("Password strength: ")
-        self.strength_label.setStyleSheet("color: lightgray;")
         layout.addWidget(self.strength_label)
 
         # Buttons
         button_layout = QHBoxLayout()
+        
         self.generate_button = QPushButton("Generate Password")
+        self.generate_button.setStyleSheet(button_style)
         self.save_button = QPushButton("Save Credential")
+        self.save_button.setStyleSheet(button_style)
 
         self.cancel_button = QPushButton("Cancel")
-        self.cancel_button.clicked.connect(self.close)
-
-        button_style = f"""
-            QPushButton {{
-                background-color: {Colors.BRAT_GREEN};
-                color: {Colors.WHITE};
-                border-radius: 10px;
-                padding: 6px;
-            }}
-            QPushButton:hover {{
-                background-color: {Colors.BRAT_GREEN_BUTTON_HOVER};
-            }}
-        """
-        
-        self.generate_button.setStyleSheet(button_style)
-        self.save_button.setStyleSheet(button_style)
         self.cancel_button.setStyleSheet(button_style)
+        self.cancel_button.clicked.connect(self.close)
 
         button_layout.addWidget(self.generate_button)
         button_layout.addWidget(self.save_button)
@@ -100,6 +86,7 @@ class AddCredentialsDialog(QDialog):
 
         # Connect password input to strength checker
         self.password_input.textChanged.connect(self.update_strength_label)
+        self.apply_theme(theme_manager.current_theme)
 
     def toggle_password_visibility(self, checked: bool):
         if checked:
@@ -160,3 +147,31 @@ class AddCredentialsDialog(QDialog):
         else:
             self.strength_label.setText("Password strength: Strong")
             self.strength_label.setStyleSheet("color: lightgreen;")
+             # Apply current theme
+        self.apply_theme(theme_manager.current_theme)
+
+    def apply_theme(self, theme):
+        colors = theme_manager.get_theme_colors(theme)
+        
+        # Apply to main dialog
+        self.setStyleSheet(f"""
+        QDialog {{
+            background-color: {colors['background']};
+            color: {colors['text']};
+        }}
+        QLabel {{
+            background-color: {colors['background']};
+            color: {colors['text']};
+        }}
+        QLineEdit {{
+            background-color: {colors['background-button']};
+            color: {colors['input_text']};
+            padding: 5px;
+            border-radius: 4px;
+        }}
+        
+        """)
+        
+    def closeEvent(self, event):
+        theme_manager.unregister_window(self)
+        super().closeEvent(event)

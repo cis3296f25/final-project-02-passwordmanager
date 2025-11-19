@@ -77,3 +77,13 @@ class Strings:
                 border: 2px solid {Colors.RED_BUTTON_PRESSED};
             }}
         """
+    EYE_BUTTON_STYLE = f"""
+            QPushButton {{
+                border: 1px solid {Colors.BRAT_GREEN};
+                padding: 5px;
+                border-radius: 4px;
+            }}
+            QPushButton:hover {{
+                background-color: {Colors.BRAT_GREEN_BUTTON_HOVER};
+            }}
+            """
