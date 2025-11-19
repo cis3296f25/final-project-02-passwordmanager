@@ -4,18 +4,20 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtGui import QFont
 from passwordmanager.api import apiCallerMethods
+from passwordmanager.utils.theme_manager import theme_manager
 from resources.colors import Colors
 from resources.strings import Strings
 
 class EditCredentialsDialog(QDialog):
     def __init__(self, credId, parent=None):
         super().__init__(parent) 
-
+        
+        theme_manager.register_window(self)
+        
         self.credId = credId
 
         # Window setup
         self.setWindowTitle("Edit Credential")
-        self.setStyleSheet(f"background-color: {Colors.DARK_GREY}; color: {Colors.WHITE};")
         self.setMinimumWidth(300)
 
         # Main layout
@@ -64,6 +66,9 @@ class EditCredentialsDialog(QDialog):
         self.cancel_button.clicked.connect(self.close_dialog)
         self.generate_button.clicked.connect(self.generate_password)
         self.save_button.clicked.connect(self.edit_credential)
+        
+        # Apply current theme
+        theme_manager.apply_theme_to_window(self, theme_manager.current_theme)
 
     def close_dialog(self):
         self.close()
@@ -90,3 +95,7 @@ class EditCredentialsDialog(QDialog):
                 self.status_label.setText(f"Error: {response.get('error', 'Unknown')}")
         except Exception as e:
             self.status_label.setText(f"Error saving credential: {e}")
+    
+    def closeEvent(self, event):
+        theme_manager.unregister_window(self)
+        super().closeEvent(event)

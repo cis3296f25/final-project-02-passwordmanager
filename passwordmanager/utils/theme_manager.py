@@ -52,8 +52,7 @@ class ThemeManager:
         # Apply theme to all registered windows
         for window in self.windows[:]:  
             try:
-                if hasattr(window, 'apply_theme'):
-                    window.apply_theme(theme)
+                self.apply_theme_to_window(window, theme)
             except RuntimeError:
                 # Window was deleted, remove from list
                 self.windows.remove(window)
@@ -65,10 +64,11 @@ class ThemeManager:
         if theme == 'light':
             return {
                 'background': Colors.OFF_WHITE,
+                'background-button': Colors.SUPER_LIGHT_GREY,
                 'text': Colors.BLACK,
                 'input_bg': Colors.WHITE,
                 'input_text': Colors.BLACK,
-                'background-button': Colors.SUPER_LIGHT_GREY,
+                'card_bg': Colors.SUPER_LIGHT_GREY,
             }
         else: 
             return {
@@ -76,7 +76,126 @@ class ThemeManager:
                 'background-button': Colors.LIGHT_GREY,
                 'text': Colors.WHITE,
                 'input_bg': Colors.LIGHT_GREY,
-                'input_text': Colors.WHITE
+                'input_text': Colors.WHITE,
+                'button_bg': Colors.LIGHT_GREY,
+                'card_bg': Colors.LIGHT_GREY,
             }
+
+    def get_theme_button_styles(self, theme=None):
+        if theme is None:
+            theme = self.current_theme
+        
+        colors = self.get_theme_colors(theme)
+        
+        base_style = f"""
+        QPushButton {{
+            background-color: {colors['button_bg']};
+            color: {colors['text']};
+            border: 2px solid {colors['button_bg']};
+            padding: 8px 16px;
+            border-radius: 4px;
+        }}
+        QPushButton:hover {{
+            background-color: {Colors.BRAT_GREEN_BUTTON_HOVER};
+        }}
+        """
+        
+        selected_style = f"""
+        QPushButton {{
+            background-color: {colors['button_bg']};
+            color: {colors['text']};
+            border: 2px solid {Colors.BRAT_GREEN};
+            padding: 8px 16px;
+            border-radius: 4px;
+        }}
+        QPushButton:hover {{
+            background-color: {Colors.BRAT_GREEN_BUTTON_HOVER};
+        }}
+        """
+        
+        return base_style, selected_style
+
+    def apply_theme_to_window(self, window, theme=None):
+        if theme is None:
+            theme = self.current_theme
+            
+        colors = self.get_theme_colors(theme)
+        window_class_name = window.__class__.__name__
+        
+        base_style = f"""
+        background-color: {colors['background']};
+        color: {colors['text']};
+        """
+        
+        input_style = f"""
+        QLineEdit {{
+            background-color: {colors['input_bg']};
+            color: {colors['input_text']};
+            padding: 5px;
+            border-radius: 4px;
+        }}
+        QLineEdit:hover {{
+            background-color: {colors['input_bg']};
+        }}
+        """
+        
+        label_style = f"""
+        QLabel {{
+            background-color: {colors['background']};
+            color: {colors['text']};
+        }}
+        """
+        
+        if window_class_name == "MainWindow":
+            window.setStyleSheet(base_style)
+            
+        elif window_class_name == "settingsDialog":
+            window.setStyleSheet(f"""
+            QDialog {{ {base_style} }}
+            {label_style}
+            {input_style}
+            """)
+            if hasattr(window, 'update_theme_buttons'):
+                window.current_theme = theme
+                window.update_theme_buttons()
+                
+        elif window_class_name in ["AddCredentialsDialog", "EditCredentialsDialog", "LoginDialog"]:
+            window.setStyleSheet(f"""
+            QDialog {{ {base_style} }}
+            {label_style}
+            {input_style}
+            """)
+            
+            if hasattr(window, 'show_password_button'):
+                window.show_password_button.setStyleSheet(f"""
+                    QPushButton {{
+                        background-color: transparent;
+                        color: {colors['text']};
+                        border: none;
+                        padding: 0;
+                        font-size: 14px;
+                    }}
+                """)
+                
+        elif window_class_name == "ListCredentialsWidget":
+            window.setStyleSheet(f"""
+            QWidget {{ {base_style} }}
+            """)
+            
+            window.scroll_area.setStyleSheet(f"""
+            QScrollArea {{
+                background-color: {colors['background']};
+                border: none;
+            }}
+            """)
+            
+            window.credentials_container.setStyleSheet(f"""
+            QWidget {{
+                background-color: {colors['background']};
+            }}
+            """)
+            
+            if hasattr(window, 'load_credentials'):
+                window.load_credentials()
 
 theme_manager = ThemeManager()

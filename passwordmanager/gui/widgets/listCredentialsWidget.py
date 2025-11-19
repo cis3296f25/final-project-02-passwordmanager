@@ -6,6 +6,7 @@ from PyQt6.QtGui import QFont, QClipboard, QIcon, QPixmap, QCursor
 from PyQt6.QtCore import Qt 
 import sys
 from passwordmanager.api import apiCallerMethods
+from passwordmanager.utils.theme_manager import theme_manager
 from resources.colors import Colors
 from resources.strings import Strings
 from passwordmanager.gui.widgets.editCredentialsDialog import EditCredentialsDialog
@@ -13,6 +14,8 @@ from passwordmanager.gui.widgets.editCredentialsDialog import EditCredentialsDia
 class ListCredentialsWidget(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
+        
+        theme_manager.register_window(self)
     
         # outer layout
         layout = QVBoxLayout(self)
@@ -30,6 +33,8 @@ class ListCredentialsWidget(QWidget):
         self.scroll_area.setWidget(self.credentials_container)
 
         self.parentWidget = parent
+        
+        theme_manager.apply_theme_to_window(self, theme_manager.current_theme)
 
     def load_credentials(self):
         # clear all previous cards
@@ -41,8 +46,9 @@ class ListCredentialsWidget(QWidget):
         try:
             credentials = apiCallerMethods.get_all_credentials()
             if not credentials:
+                colors = theme_manager.get_theme_colors()
                 label = QLabel("No credentials stored yet.")
-                label.setStyleSheet(f"color: {Colors.WHITE};")
+                label.setStyleSheet(f"color: {colors['text']};")
                 self.credentials_layout.addWidget(label)
                 return
 
@@ -50,12 +56,15 @@ class ListCredentialsWidget(QWidget):
                 self.add_credential_card(cred)
 
         except Exception as e:
+            colors = theme_manager.get_theme_colors()
             error_label = QLabel(f"Error loading credentials: {e}")
-            error_label.setStyleSheet(f"color: {Colors.WHITE};")
+            error_label.setStyleSheet(f"color: {colors['text']};")
             self.credentials_layout.addWidget(error_label)
 
     # create a rectangular card for one credential
     def add_credential_card(self, cred):
+        colors = theme_manager.get_theme_colors()
+        
         card = QWidget()
         card.setFixedHeight(45)
         card_layout = QHBoxLayout(card)
@@ -70,10 +79,9 @@ class ListCredentialsWidget(QWidget):
         # show 12 bullets by default to hide password length
         password_label = QLabel("•" * 12)
 
-        # font / color
-        site.setStyleSheet(f"color: {Colors.WHITE}; font-size: 12px;")
-        username.setStyleSheet(f"color: {Colors.WHITE}; font-size: 12px;")
-        password_label.setStyleSheet(f"color: {Colors.WHITE}; font-size: 16px;")
+        site.setStyleSheet(f"color: {colors['text']}; font-size: 12px;")
+        username.setStyleSheet(f"color: {colors['text']}; font-size: 12px;")
+        password_label.setStyleSheet(f"color: {colors['text']}; font-size: 16px;")
 
         # buttons (really should refactor this later) ##########################################
         copy_button = QPushButton()
@@ -141,7 +149,7 @@ class ListCredentialsWidget(QWidget):
         card_layout.addLayout(button_layout)
 
         card.setStyleSheet(f"""
-            background-color: {Colors.LIGHT_GREY};
+            background-color: {colors['card_bg']};
             border-radius: 10px;
             padding: 6px;
         """)
@@ -156,8 +164,8 @@ class ListCredentialsWidget(QWidget):
         self.load_credentials()
 
     def edit_credential(self, id):
-        overlay = QWidget(self)
-        overlay.setGeometry(self.rect())
+        overlay = QWidget(self.parentWidget)
+        overlay.setGeometry(self.parentWidget.rect())
         overlay.setStyleSheet("background-color: rgba(0, 0, 0, 150);")
         overlay.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, False)
         overlay.show()
