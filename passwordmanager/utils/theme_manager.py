@@ -195,6 +195,31 @@ class ThemeManager:
             }}
             """)
             
+            if hasattr(window, 'search_bar'):
+                window.search_bar.setStyleSheet(f"""
+                QLineEdit {{
+                    background-color: {colors['input_bg']};
+                    color: {colors['input_text']};
+                    padding: 8px;
+                    border-radius: 6px;
+                    font-size: 14px;
+                }}
+                QLineEdit:focus {{
+                    background-color: {colors['input_bg']};
+                    color: {colors['input_text']};
+                    border: 2px solid {Colors.BRAT_GREEN};
+                    padding: 7px;
+                }}
+                QLineEdit:hover {{
+                    background-color: {colors['input_bg']};
+                    border: 1px solid {Colors.BRAT_GREEN_BUTTON_HOVER};
+                }}
+                QLineEdit:hover:focus {{
+                    border: 2px solid {Colors.BRAT_GREEN};
+                    padding: 7px;
+                }}
+                """)
+            
             if hasattr(window, 'load_credentials'):
                 window.load_credentials()
 
