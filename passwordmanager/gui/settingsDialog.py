@@ -72,8 +72,7 @@ class settingsDialog(QDialog):
         self.close_button = QPushButton("Close")
         self.close_button.clicked.connect(self.close)
 
-        button_style = Strings.button_style if hasattr(Strings, 'button_style') else Strings.SMALL_BUTTON_STYLE
-        self.close_button.setStyleSheet(button_style)
+        self.close_button.setStyleSheet(Strings.LARGE_BUTTON_STYLE)
 
         button_layout.addWidget(self.close_button)
         layout.addLayout(button_layout)
