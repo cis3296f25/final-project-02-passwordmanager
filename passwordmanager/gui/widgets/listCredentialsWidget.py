@@ -22,16 +22,8 @@ class ListCredentialsWidget(QWidget):
 
         #search bar
         self.search_bar = QLineEdit()
-        self.search_bar.setPlaceholderText("Search by site or username")
-        self.search_bar.setStyleSheet(f"""
-            QLineEdit {{
-                background-color: {Colors.LIGHT_GREY};
-                color: {Colors.WHITE};
-                border-radius: 10px;
-                padding: 6px;
-                font-size: 12px;
-            }}
-        """)
+        self.search_bar.setContentsMargins(10, 0, 10, 0)
+        self.search_bar.setPlaceholderText("Search")
         self.search_bar.textChanged.connect(self.filter_credentials)
         layout.addWidget(self.search_bar)
 
