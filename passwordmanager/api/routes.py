@@ -214,9 +214,10 @@ def account_login():
     except Exception:
         return jsonify({"error": "incorrect credentials"}), 401
 
-    global vault_locked, current_user, current_vmk_cipher
+    global vault_locked, current_user, current_vmk, current_vmk_cipher
     vault_locked = False
     current_user = username
+    current_vmk = vmk
     current_vmk_cipher = Fernet(vmk)
     return jsonify({"status": "logged in"})
 
@@ -224,6 +225,49 @@ def account_login():
 @app.route("/account/logout", methods=["POST"])
 def account_logout():
     return lock_vault()
+
+# changes a users master password assuming they're already logged in.
+#
+# this currently does NOT require any validation of their existing password and 
+# should be expanded on in the future
+@app.route("/account/password", methods=["PUT"])
+def change_master_password():
+    global vault_locked, current_user, current_vmk
+
+    if vault_locked or not current_user:
+        return jsonify({"error": "not logged in"}), 401
+
+    data = request.json or {}
+    new_password = data.get("new_password")
+    if not new_password:
+        return jsonify({"error": "missing fields"}), 400
+
+    # load user kdf metadata
+    c.execute(
+        "SELECT salt, kdf_params FROM user_metadata WHERE username = ?",
+        (current_user,),
+    )
+    row = c.fetchone()
+    if not row:
+        return jsonify({"error": "user not found"}), 404
+
+    salt, kdf_params_json = row
+    params = json.loads(kdf_params_json)
+
+    new_wrap_key = derive_wrap_key(new_password, salt, params)
+
+    # rewrap the existing vmk from the last login 
+    new_wrapped_vmk = wrap_vmk(new_wrap_key, current_vmk)
+
+    # store 
+    c.execute(
+        "UPDATE user_metadata SET wrapped_vmk = ? WHERE username = ?",
+        (new_wrapped_vmk, current_user),
+    )
+    conn.commit()
+
+    return jsonify({"status": "password updated"})
+
 
 # Test and run
 if __name__ == "__main__":
