@@ -6,7 +6,7 @@ A local password manager that lets you securely store and retrieve your account 
 1. Go to the 'Releases' page to the right
 2. Select the release compatible with your Operating System
 
-For Mac:
+### For Mac:
 1. Download .tar.gz file.
 2. Double-click the downloaded .tar.gz file to unzip it.
 3. Run the executable file.
@@ -25,14 +25,12 @@ source venv/bin/activate
 
 Install requirements:
 ```
-pip3 install flask 
-pip3 install cryptography
-pip3 install PyQt6
+pip install -r requirements.txt
 
 ```
 Run code:
 ```
-python3 passwordManager.py
+python3 main.py
 ```
 
 # How to contribute
