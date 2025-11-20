@@ -58,6 +58,7 @@ class settingsDialog(QDialog):
         check_icon = QIcon(Strings.CHECK_ICON_PATH)
         self.check_button.setIcon(check_icon)
         self.check_button.setStyleSheet(Strings.SMALL_BUTTON_STYLE)
+        self.check_button.clicked.connect(self.set_master_password)
 
         password_layout.addWidget(self.password_input)
         password_layout.addWidget(self.check_button)
@@ -79,6 +80,11 @@ class settingsDialog(QDialog):
 
         self.setLayout(layout)
         self.apply_theme(self.current_theme)
+
+    def set_master_password(self):
+        newPassword = self.password_input.text()
+        apiCallerMethods.set_master_password(newPassword)
+
 
     def apply_theme(self, theme):
         """Apply theme colors to this dialog"""
