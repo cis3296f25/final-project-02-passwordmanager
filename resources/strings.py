@@ -89,3 +89,14 @@ class Strings:
                 background-color: {Colors.BRAT_GREEN_BUTTON_HOVER};
             }}
             """
+            
+    SETTINGS_BUTTON_STYLE = f"""
+        QPushButton {{
+            padding: 8px 16px;
+            border-radius: 4px;
+        }}
+        QPushButton:hover {{
+            background-color: {Colors.BRAT_GREEN_BUTTON_HOVER};
+            color: {Colors.BLACK};
+        }}
+        """

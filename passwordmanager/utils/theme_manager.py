@@ -77,7 +77,6 @@ class ThemeManager:
                 'text': Colors.WHITE,
                 'input_bg': Colors.LIGHT_GREY,
                 'input_text': Colors.WHITE,
-                'button_bg': Colors.LIGHT_GREY,
                 'card_bg': Colors.LIGHT_GREY,
             }
 
@@ -158,8 +157,9 @@ class ThemeManager:
             if hasattr(window, 'update_theme_buttons'):
                 window.current_theme = theme
                 window.update_theme_buttons()
+                window.update_button_theme()
                 
-        elif window_class_name in ["AddCredentialsDialog", "EditCredentialsDialog", "LoginDialog"]:
+        elif window_class_name in ["AddCredentialsDialog", "EditCredentialsDialog", "LoginDialog", "ChangePasswordWindow"]:
             window.setStyleSheet(f"""
             QDialog {{ {base_style} }}
             {label_style}
