@@ -1,12 +1,14 @@
 from PyQt6.QtWidgets import (
     QPushButton, QVBoxLayout, QLabel,
-    QDialog, QLineEdit, QFormLayout, QHBoxLayout
+    QDialog, QLineEdit, QFormLayout, QHBoxLayout, QWidget
 )
 from PyQt6.QtGui import QFont, QIcon
+from PyQt6.QtCore import Qt
 from passwordmanager.api import apiCallerMethods
 from passwordmanager.utils.theme_manager import theme_manager
 from resources.colors import Colors
 from resources.strings import Strings
+from passwordmanager.gui.changePasswordWindow import ChangePasswordWindow
 
 
 class settingsDialog(QDialog):
@@ -39,32 +41,23 @@ class settingsDialog(QDialog):
         self.light_button = QPushButton("Light")
         self.dark_button = QPushButton("Dark")
 
-        # Style the theme buttons
-        self.update_theme_buttons()
-
         # Connect theme button actions
         self.light_button.clicked.connect(self.set_light_theme)
         self.dark_button.clicked.connect(self.set_dark_theme)
 
         theme_layout.addWidget(self.light_button)
         theme_layout.addWidget(self.dark_button)
-
+        
         form_layout.addRow("Theme:", theme_layout)
+        
+        # Change password section
+        self.change_password_button = QPushButton("Change Password")
+        self.change_password_button.setStyleSheet(Strings.SETTINGS_BUTTON_STYLE)
+        self.change_password_button.clicked.connect(self.open_change_password_window)
+        
+        form_layout.addRow("Password:", self.change_password_button)
 
-        # Master password section with input and check button on same row
-        password_layout = QHBoxLayout()
-        self.password_input = QLineEdit()
-        self.check_button = QPushButton()
-        check_icon = QIcon(Strings.CHECK_ICON_PATH)
-        self.check_button.setIcon(check_icon)
-        self.check_button.setStyleSheet(Strings.SMALL_BUTTON_STYLE)
-        self.check_button.clicked.connect(self.set_master_password)
-
-        password_layout.addWidget(self.password_input)
-        password_layout.addWidget(self.check_button)
-
-        form_layout.addRow("Change Master Password:", password_layout)
-
+        # Add form layout to main layout
         layout.addLayout(form_layout)
 
         # Buttons
@@ -72,43 +65,15 @@ class settingsDialog(QDialog):
 
         self.close_button = QPushButton("Close")
         self.close_button.clicked.connect(self.close)
-
         self.close_button.setStyleSheet(Strings.LARGE_BUTTON_STYLE)
 
         button_layout.addWidget(self.close_button)
         layout.addLayout(button_layout)
 
         self.setLayout(layout)
-        self.apply_theme(self.current_theme)
-
-    def set_master_password(self):
-        newPassword = self.password_input.text()
-        apiCallerMethods.set_master_password(newPassword)
-
-
-    def apply_theme(self, theme):
-        """Apply theme colors to this dialog"""
-        self.current_theme = theme
-        colors = theme_manager.get_theme_colors(theme) 
         
-        self.setStyleSheet(f"""
-        QDialog {{ 
-            background-color: {colors['background']}; 
-            color: {colors['text']}; 
-        }}
-        QLabel {{
-            background-color: {colors['background']};
-            color: {colors['text']};
-        }}
-        QLineEdit {{
-            background-color: {colors['background-button']};
-            color: {colors['input_text']};
-            padding: 5px;
-            border-radius: 4px;
-        }}
-        """)
-        
-        self.update_theme_buttons()
+        # Let the theme manager handle initial theming
+        theme_manager.apply_theme_to_window(self, theme_manager.current_theme)
 
     def update_theme_buttons(self):
         colors = theme_manager.get_theme_colors(self.current_theme)
@@ -143,6 +108,24 @@ class settingsDialog(QDialog):
             # Dark theme selected
             self.dark_button.setStyleSheet(selected_theme_button_style)
             self.light_button.setStyleSheet(base_theme_button_style)
+
+    def update_button_theme(self):
+        """Update the Change Password button styling based on current theme"""
+        colors = theme_manager.get_theme_colors(self.current_theme)
+        
+        button_style = f"""
+        QPushButton {{
+            background-color: {colors['background-button']};
+            color: {colors['text']};
+            padding: 8px 16px;
+            border-radius: 4px;
+        }}
+        QPushButton:hover {{
+            background-color: {Colors.BRAT_GREEN_BUTTON_HOVER};
+            color: {Colors.BLACK};
+        }}
+        """
+        self.change_password_button.setStyleSheet(button_style)
   
     def set_light_theme(self):
         theme_manager.set_theme("light")
@@ -153,3 +136,14 @@ class settingsDialog(QDialog):
     def closeEvent(self, event):
         theme_manager.unregister_window(self)
         super().closeEvent(event)
+        
+    def open_change_password_window(self):
+        overlay = QWidget(self)
+        overlay.setGeometry(self.rect())
+        overlay.setStyleSheet("background-color: rgba(0, 0, 0, 150);")  # translucent overlay
+        overlay.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, False)
+        overlay.show()
+        
+        change_password_window = ChangePasswordWindow(self)
+        change_password_window.exec()
+        overlay.deleteLater()
