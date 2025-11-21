@@ -10,6 +10,9 @@ from passwordmanager.utils.theme_manager import theme_manager
 from resources.colors import Colors
 from resources.strings import Strings
 from passwordmanager.gui.widgets.editCredentialsDialog import EditCredentialsDialog
+from passwordmanager.gui.settingsDialog import settingsDialog
+
+button_height = 32
 
 class ListCredentialsWidget(QWidget):
     def __init__(self, parent=None):
@@ -23,23 +26,16 @@ class ListCredentialsWidget(QWidget):
         # outer layout
         layout = QVBoxLayout(self)
 
- # Top row icons: search bar + filter button
+        # Top row icons: search bar + filter button
         top_row = QHBoxLayout()
+        
         #search bar
         self.search_bar = QLineEdit()
-        self.search_bar.setPlaceholderText("Search by site or username")
-        self.search_bar.setStyleSheet(f"""
-            QLineEdit {{
-                background-color: {Colors.LIGHT_GREY};
-                color: {Colors.WHITE};
-                border-radius: 10px;
-                padding: 6px;
-                font-size: 12px;
-            }}
-        """)
+        self.search_bar.setPlaceholderText("Search")
         self.search_bar.textChanged.connect(self.filter_credentials)
         top_row.addWidget(self.search_bar, 1)  # take remaining space
-
+        top_row.addSpacing(10) 
+        
         # hidden sort combobox (used only for logic)
         self.sort_dropdown = QComboBox()
         sort_options = [
@@ -49,11 +45,14 @@ class ListCredentialsWidget(QWidget):
         ]
         self.sort_dropdown.addItems(sort_options)
         self.sort_dropdown.currentIndexChanged.connect(self.apply_filters)
+        
         # NOTE: we do NOT add self.sort_dropdown to any layout
 
         # filter button that opens a dropdown menu
-        self.filter_button = QPushButton("▾")  # you can swap this text for an icon later
-        self.filter_button.setFixedWidth(40)
+        self.filter_button = QPushButton("") 
+        filter_icon = QIcon(QPixmap(Strings.FILTER_ICON_PATH))
+        self.filter_button.setIcon(filter_icon)
+        self.filter_button.setFixedWidth(40) 
         self.filter_button.setStyleSheet(Strings.SMALL_BUTTON_STYLE)
 
         self.filter_menu = QMenu(self)
@@ -62,10 +61,24 @@ class ListCredentialsWidget(QWidget):
             action.triggered.connect(
                 lambda _, i=index: self.sort_dropdown.setCurrentIndex(i)
             )
-        self.filter_button.setMenu(self.filter_menu)
+        self.filter_button.clicked.connect(self.show_filter_menu)           
+        # Settings button
+        settings_button = QPushButton("")
+        settings_button.setStyleSheet(Strings.SMALL_BUTTON_STYLE)
+        settings_icon = QIcon(QPixmap(Strings.SETTINGS_ICON_PATH)) 
+        settings_button.setIcon(settings_icon)
+        settings_button.setFixedWidth(40) 
+        settings_button.clicked.connect(self.open_settings_dialog)
 
+        # Add buttons to top row
         top_row.addWidget(self.filter_button)
+        top_row.addWidget(settings_button)
+        
+        # Set margins to match credential cards layout
+        top_row.setContentsMargins(10, 0, 10, 0)
+        
         layout.addLayout(top_row)
+        
         # ---------- end top row ----------
 
         # scrollable area
@@ -215,7 +228,6 @@ class ListCredentialsWidget(QWidget):
         show_button.setStyleSheet(Strings.SMALL_BUTTON_STYLE)
         
         # Set fixed height for all buttons to ensure consistency
-        button_height = 32
         copy_button.setFixedHeight(button_height)
         edit_button.setFixedHeight(button_height)
         delete_button.setFixedHeight(button_height)
@@ -298,3 +310,36 @@ class ListCredentialsWidget(QWidget):
     def filter_credentials(self):
         """Called when search text changes – just reapply filters."""
         self.apply_filters()
+        
+    def open_settings_dialog(self):
+        overlay = QWidget(self.parentWidget) 
+        overlay.setGeometry(self.parentWidget.rect())  
+        overlay.setStyleSheet("background-color: rgba(0, 0, 0, 150);")  # translucent overlay
+        overlay.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, False)
+        overlay.show()
+
+        dialog = settingsDialog(self.parentWidget)  # Pass parentWidget as parent
+        dialog.adjustSize()
+
+        # Center dialog relative to main window
+        parent_rect = self.parentWidget.frameGeometry()
+        dialog_rect = dialog.frameGeometry()
+
+        dialog_rect.moveCenter(parent_rect.center())
+        dialog.move(dialog_rect.topLeft())
+        dialog.exec()
+
+        overlay.deleteLater()
+
+    def closeEvent(self, event):
+        """Clean up when widget is closed"""
+        theme_manager.unregister_window(self)
+        super().closeEvent(event)
+
+    def show_filter_menu(self):
+        """This just shows the already-created menu at the right position (I didn't like the automatic small arrow)."""
+        button_rect = self.filter_button.rect()
+        button_global_pos = self.filter_button.mapToGlobal(button_rect.bottomLeft())
+        
+        # Show the menu at the calculated position
+        self.filter_menu.exec(button_global_pos)

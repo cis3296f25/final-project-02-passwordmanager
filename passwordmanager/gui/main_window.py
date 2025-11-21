@@ -12,7 +12,6 @@ from resources.colors import Colors
 from resources.strings import Strings
 from passwordmanager.gui.widgets.listCredentialsWidget import ListCredentialsWidget
 from passwordmanager.gui.widgets.addCredentialsDialog import AddCredentialsDialog
-from passwordmanager.gui.settingsDialog import settingsDialog
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -45,22 +44,18 @@ class MainWindow(QMainWindow):
 
         # buttons
         add_button = QPushButton("Add New Credential")
-        settings_button = QPushButton("Settings")
         exit_button = QPushButton("Exit")
 
         # button styling
         add_button.setStyleSheet(Strings.LARGE_BUTTON_STYLE)
-        settings_button.setStyleSheet(Strings.LARGE_BUTTON_STYLE)
         exit_button.setStyleSheet(Strings.LARGE_BUTTON_STYLE)
 
         layout.addWidget(add_button)
-        layout.addWidget(settings_button)
         layout.addWidget(exit_button)
 
         # Connect buttons
         add_button.clicked.connect(self.open_add_dialog)
         exit_button.clicked.connect(self.close)
-        settings_button.clicked.connect(self.open_settings_dialog)
 
     def apply_theme(self, theme):
         """Apply theme colors to this window"""
@@ -96,27 +91,6 @@ class MainWindow(QMainWindow):
         # Only refresh if dialog closed with accept() (i.e., successful save)
         if result == QDialog.DialogCode.Accepted:
             self.refresh_credentials()
-
-    def open_settings_dialog(self):
-        overlay = QWidget(self)
-        overlay.setGeometry(self.rect())
-        overlay.setStyleSheet("background-color: rgba(0, 0, 0, 150);")  # translucent overlay
-        overlay.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, False)
-        overlay.show()
-
-        dialog = settingsDialog(self)  # Pass self as parent so it stays centered
-        dialog.adjustSize()
-
-        #Center dialog relative to main window
-        parent_rect = self.frameGeometry()
-        dialog_rect = dialog.frameGeometry()
-
-        dialog_rect.moveCenter(parent_rect.center())
-        dialog.move(dialog_rect.topLeft())
-        dialog.exec()
-
-        overlay.deleteLater()
-        self.refresh_credentials()
 
     def refresh_credentials(self):
         self.credentials_list.load_credentials()

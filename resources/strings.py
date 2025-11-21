@@ -19,6 +19,8 @@ class Strings:
     EDIT_ICON_PATH = get_resource_path("resources/images/editButtonIcon.png")
     COPY_ICON_PATH = get_resource_path("resources/images/copyButtonIcon.png")
     CHECK_ICON_PATH = get_resource_path("resources/images/checkButtonIcon.png")
+    SETTINGS_ICON_PATH = get_resource_path("resources/images/settingsIcon.png")
+    FILTER_ICON_PATH = get_resource_path("resources/images/filterIcon.png")
     
     # style sheets:
     LARGE_BUTTON_STYLE = f"""
