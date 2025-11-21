@@ -7,9 +7,7 @@ A local password manager that lets you securely store and retrieve your account 
 2. Select the release compatible with your Operating System
 
 ### For Mac:
-1. Download .tar.gz file.
-2. Double-click the downloaded .tar.gz file to unzip it.
-3. Run the executable file.
+The project must be built from source using the instruction below.
 
 
 ## To run from the source code
