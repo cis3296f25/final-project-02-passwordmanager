@@ -1,6 +1,6 @@
 from PyQt6.QtWidgets import (
     QApplication, QPushButton, QWidget, QVBoxLayout, QLabel,
-    QHBoxLayout, QScrollArea, QLineEdit
+    QHBoxLayout, QScrollArea, QLineEdit, QComboBox, QMenu
 )
 from PyQt6.QtGui import QFont, QClipboard, QIcon, QPixmap, QCursor
 from PyQt6.QtCore import Qt 
@@ -17,22 +17,63 @@ class ListCredentialsWidget(QWidget):
         
         theme_manager.register_window(self)
     
+        # Keep a copy of all credentials for sorting/filtering
+        self.all_credentials = []
+
         # outer layout
         layout = QVBoxLayout(self)
 
+ # Top row icons: search bar + filter button
+        top_row = QHBoxLayout()
         #search bar
         self.search_bar = QLineEdit()
-        self.search_bar.setContentsMargins(10, 0, 10, 0)
-        self.search_bar.setPlaceholderText("Search")
+        self.search_bar.setPlaceholderText("Search by site or username")
+        self.search_bar.setStyleSheet(f"""
+            QLineEdit {{
+                background-color: {Colors.LIGHT_GREY};
+                color: {Colors.WHITE};
+                border-radius: 10px;
+                padding: 6px;
+                font-size: 12px;
+            }}
+        """)
         self.search_bar.textChanged.connect(self.filter_credentials)
-        layout.addWidget(self.search_bar)
+        top_row.addWidget(self.search_bar, 1)  # take remaining space
+
+        # hidden sort combobox (used only for logic)
+        self.sort_dropdown = QComboBox()
+        sort_options = [
+            "Sort: Date Added (Newest First)",  # keep API order
+            "Sort: Site (A–Z)",
+            "Sort: Site (Z–A)",
+        ]
+        self.sort_dropdown.addItems(sort_options)
+        self.sort_dropdown.currentIndexChanged.connect(self.apply_filters)
+        # NOTE: we do NOT add self.sort_dropdown to any layout
+
+        # filter button that opens a dropdown menu
+        self.filter_button = QPushButton("▾")  # you can swap this text for an icon later
+        self.filter_button.setFixedWidth(40)
+        self.filter_button.setStyleSheet(Strings.SMALL_BUTTON_STYLE)
+
+        self.filter_menu = QMenu(self)
+        for index, label in enumerate(sort_options):
+            action = self.filter_menu.addAction(label)
+            action.triggered.connect(
+                lambda _, i=index: self.sort_dropdown.setCurrentIndex(i)
+            )
+        self.filter_button.setMenu(self.filter_menu)
+
+        top_row.addWidget(self.filter_button)
+        layout.addLayout(top_row)
+        # ---------- end top row ----------
 
         # scrollable area
         self.scroll_area = QScrollArea()
         self.scroll_area.setWidgetResizable(True)
         self.scroll_area.setStyleSheet("border: none;")
         layout.addWidget(self.scroll_area)
-        
+
         # inner rectangular container for credentials cards
         self.credentials_container = QWidget()
         self.credentials_layout = QVBoxLayout(self.credentials_container)
@@ -44,6 +85,10 @@ class ListCredentialsWidget(QWidget):
         theme_manager.apply_theme_to_window(self, theme_manager.current_theme)
 
     def load_credentials(self):
+        """Fetch all credentials from the API and rebuild the list with current filters/sort."""
+        # reset stored credentials
+        self.all_credentials = []
+
         # clear all previous cards
         for i in reversed(range(self.credentials_layout.count())):
             widget = self.credentials_layout.itemAt(i).widget()
@@ -52,15 +97,16 @@ class ListCredentialsWidget(QWidget):
 
         try:
             credentials = apiCallerMethods.get_all_credentials()
-            if not credentials:
+            self.all_credentials = credentials or []
+
+            if not self.all_credentials:
                 colors = theme_manager.get_theme_colors()
                 label = QLabel("No credentials stored yet.")
                 label.setStyleSheet(f"color: {colors['text']};")
                 self.credentials_layout.addWidget(label)
-                return
-
-            for cred in credentials:
-                self.add_credential_card(cred)
+            else:
+                # Apply current search + sort settings
+                self.apply_filters()
 
         except Exception as e:
             colors = theme_manager.get_theme_colors()
@@ -68,7 +114,59 @@ class ListCredentialsWidget(QWidget):
             error_label.setStyleSheet(f"color: {colors['text']};")
             self.credentials_layout.addWidget(error_label)
 
-        self.search_bar.clear() #sets search bar to empty
+        # reset search bar when reloading data
+        self.search_bar.clear()
+
+    def apply_filters(self):
+        """
+        Apply current search text and sort selection to self.all_credentials,
+        then rebuild the visible cards.
+        """
+        # clear current 
+        for i in reversed(range(self.credentials_layout.count())):
+            widget = self.credentials_layout.itemAt(i).widget()
+            if widget:
+                widget.setParent(None)
+
+        colors = theme_manager.get_theme_colors()
+
+        if not self.all_credentials:
+            label = QLabel("No credentials stored yet.")
+            label.setStyleSheet(f"color: {colors['text']};")
+            self.credentials_layout.addWidget(label)
+            return
+
+        # start from all credentials
+        creds = list(self.all_credentials)
+
+        # 1) Sort
+        sort_text = self.sort_dropdown.currentText()
+
+        # Keep backend order as "Date Added (Newest First)"
+        if "Site (A–Z)" in sort_text:
+            creds.sort(key=lambda c: c.get("site", "").lower())
+        elif "Site (Z–A)" in sort_text:
+            creds.sort(key=lambda c: c.get("site", "").lower(), reverse=True)
+        # else: leave `creds` in the order received from API
+
+        # 2) Filter by search text
+        search = self.search_bar.text().lower().strip()
+        if search:
+            creds = [
+                c for c in creds
+                if search in c.get("site", "").lower()
+                or search in c.get("username", "").lower()
+            ]
+
+        if not creds:
+            label = QLabel("No credentials match your search.")
+            label.setStyleSheet(f"color: {colors['text']};")
+            self.credentials_layout.addWidget(label)
+            return
+
+        # 3) Rebuild cards
+        for cred in creds:
+            self.add_credential_card(cred)
 
     # create a rectangular card for one credential
     def add_credential_card(self, cred):
@@ -198,31 +296,5 @@ class ListCredentialsWidget(QWidget):
         self.load_credentials()
 
     def filter_credentials(self):
-        search_text = self.search_bar.text().lower()
-
-        # loop thru all elements in widget; linear search
-        for i in range(self.credentials_layout.count()):
-            item = self.credentials_layout.itemAt(i)
-            card = item.widget()
-
-            if not card:
-                    continue
-            
-            # labels from above
-            site_label = card.findChild(QLabel, "site_label")
-            username_label = card.findChild(QLabel, "username_label")
-
-            # this handles scenario where theres no credentials (i.e. no children)
-            if not site_label or not username_label:
-                if isinstance(card, QLabel):
-                    card.setHidden(bool(search_text))
-                continue
-
-            # check for match in either field
-            site_match = search_text in site_label.text().lower()
-            username_match = search_text in username_label.text().lower()
-
-            if site_match or username_match:
-                card.show()
-            else:
-                card.hide()
+        """Called when search text changes – just reapply filters."""
+        self.apply_filters()
