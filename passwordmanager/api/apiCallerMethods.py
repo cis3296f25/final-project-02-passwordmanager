@@ -68,3 +68,10 @@ def set_master_password(new_password):
 def get_status():
     response = requests.get(f"{BASE_URL}/status")
     return response.json()
+
+def check_duplicate_credential(site, username):
+    response = requests.post(f"{BASE_URL}/check-duplicate", json={
+        "site": site,
+        "username": username
+    })
+    return response.json()

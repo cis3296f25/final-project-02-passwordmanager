@@ -268,6 +268,25 @@ def change_master_password():
 
     return jsonify({"status": "password updated"})
 
+@app.route("/check-duplicate", methods=["POST"])
+def check_duplicate():
+    
+    global vault_locked
+
+    if vault_locked:
+        return jsonify({"error": "Vault is locked"}), 423
+
+
+    data = request.json
+    site = data.get("site")
+    username = data.get("username")
+
+    c.execute("SELECT 1 FROM credentials WHERE site = ? AND username = ?", (site, username))
+    row = c.fetchone()
+
+    # return true if row found, false otherwise
+    return jsonify({"exists": bool(row)})
+
 
 # Test and run
 if __name__ == "__main__":
