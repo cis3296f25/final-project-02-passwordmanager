@@ -26,16 +26,16 @@ class ListCredentialsWidget(QWidget):
         # outer layout
         layout = QVBoxLayout(self)
 
- # Top row icons: search bar + filter button
+        # Top row icons: search bar + filter button
         top_row = QHBoxLayout()
         
         #search bar
         self.search_bar = QLineEdit()
-        self.search_bar.setContentsMargins(10, 0, 10, 0)
         self.search_bar.setPlaceholderText("Search")
         self.search_bar.textChanged.connect(self.filter_credentials)
         top_row.addWidget(self.search_bar, 1)  # take remaining space
-
+        top_row.addSpacing(10) 
+        
         # hidden sort combobox (used only for logic)
         self.sort_dropdown = QComboBox()
         sort_options = [
@@ -49,9 +49,10 @@ class ListCredentialsWidget(QWidget):
         # NOTE: we do NOT add self.sort_dropdown to any layout
 
         # filter button that opens a dropdown menu
-        self.filter_button = QPushButton("")  # you can swap this text for an icon later
+        self.filter_button = QPushButton("") 
         filter_icon = QIcon(QPixmap(Strings.FILTER_ICON_PATH))
         self.filter_button.setIcon(filter_icon)
+        self.filter_button.setFixedWidth(40) 
         self.filter_button.setStyleSheet(Strings.SMALL_BUTTON_STYLE)
 
         self.filter_menu = QMenu(self)
@@ -60,21 +61,23 @@ class ListCredentialsWidget(QWidget):
             action.triggered.connect(
                 lambda _, i=index: self.sort_dropdown.setCurrentIndex(i)
             )
-        self.filter_button.setMenu(self.filter_menu)
-        
+        self.filter_button.clicked.connect(self.show_filter_menu)           
+        # Settings button
         settings_button = QPushButton("")
         settings_button.setStyleSheet(Strings.SMALL_BUTTON_STYLE)
         settings_icon = QIcon(QPixmap(Strings.SETTINGS_ICON_PATH)) 
         settings_button.setIcon(settings_icon)
-        layout.addWidget(settings_button)
+        settings_button.setFixedWidth(40) 
         settings_button.clicked.connect(self.open_settings_dialog)
 
+        # Add buttons to top row
         top_row.addWidget(self.filter_button)
         top_row.addWidget(settings_button)
         
+        # Set margins to match credential cards layout
+        top_row.setContentsMargins(10, 0, 10, 0)
+        
         layout.addLayout(top_row)
-        
-        
         
         # ---------- end top row ----------
 
@@ -309,17 +312,17 @@ class ListCredentialsWidget(QWidget):
         self.apply_filters()
         
     def open_settings_dialog(self):
-        overlay = QWidget(self)
-        overlay.setGeometry(self.rect())
+        overlay = QWidget(self.parentWidget) 
+        overlay.setGeometry(self.parentWidget.rect())  
         overlay.setStyleSheet("background-color: rgba(0, 0, 0, 150);")  # translucent overlay
         overlay.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, False)
         overlay.show()
 
-        dialog = settingsDialog(self)  # Pass self as parent so it stays centered
+        dialog = settingsDialog(self.parentWidget)  # Pass parentWidget as parent
         dialog.adjustSize()
 
-        #Center dialog relative to main window
-        parent_rect = self.frameGeometry()
+        # Center dialog relative to main window
+        parent_rect = self.parentWidget.frameGeometry()
         dialog_rect = dialog.frameGeometry()
 
         dialog_rect.moveCenter(parent_rect.center())
@@ -327,4 +330,16 @@ class ListCredentialsWidget(QWidget):
         dialog.exec()
 
         overlay.deleteLater()
-        self.refresh_credentials()
+
+    def closeEvent(self, event):
+        """Clean up when widget is closed"""
+        theme_manager.unregister_window(self)
+        super().closeEvent(event)
+
+    def show_filter_menu(self):
+        """This just shows the already-created menu at the right position (I didn't like the automatic small arrow)."""
+        button_rect = self.filter_button.rect()
+        button_global_pos = self.filter_button.mapToGlobal(button_rect.bottomLeft())
+        
+        # Show the menu at the calculated position
+        self.filter_menu.exec(button_global_pos)
