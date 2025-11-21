@@ -1,6 +1,7 @@
 from PyQt6.QtWidgets import (
     QPushButton, QVBoxLayout, QLabel,
-    QDialog, QLineEdit, QFormLayout, QHBoxLayout
+    QDialog, QLineEdit, QFormLayout, QHBoxLayout,
+    QMessageBox
 )
 from PyQt6.QtGui import QFont
 from PyQt6.QtCore import Qt
@@ -116,6 +117,26 @@ class AddCredentialsDialog(QDialog):
             if not site or not username or not password:
                 self.status_label.setText("Please fill in all fields before saving.")
                 return
+            
+            try:
+                dup_response = apiCallerMethods.check_duplicate_credential(site, username)
+                if dup_response.get("exists"):
+                    # trigger warning pop-up
+                    reply = QMessageBox.question(
+                        self,
+                        "Duplicate credential!",
+                        f"An entry for '{username}' on '{site}' already exists.\nDo you want to save this duplicate?",
+                        QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                        QMessageBox.StandardButton.No
+                    )
+
+                    # if no is clocked, stop save process
+                    if reply == QMessageBox.StandardButton.No:
+                        self.status_label.setText("Save cancelled.")
+                        return
+            except Exception as e:
+                print(f"Warning: couldn't check for duplicates: {e}")
+            # ========================================================
 
             # call API
             response = apiCallerMethods.add_credential(site, username, password)
