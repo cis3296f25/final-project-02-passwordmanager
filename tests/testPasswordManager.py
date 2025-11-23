@@ -364,6 +364,65 @@ class TestVaultAPI(unittest.TestCase):
                 result = pm.get_base_path()
                 self.assertEqual(result, expected_path)
 
+    def test_change_master_password_when_locked(self):
+        self.client.post("/lock")
+        r = self.client.put("/account/password", json={"new_password": "newpass"})
+        self.assertEqual(r.status_code, 401)
+        self.assertEqual(r.get_json().get("error"), "not logged in")
+        self.client.post("/unlock")
+        self.client.post("/account/login", json={"username":"unittest-user","master_password":"unittest-pass"})
+
+    def test_change_master_password_when_not_logged_in(self):
+        self.client.post("/account/logout")
+        self.client.post("/unlock")
+        r = self.client.put("/account/password", json={"new_password": "newpass"})
+        self.assertEqual(r.status_code, 401)
+        self.assertEqual(r.get_json().get("error"), "not logged in")
+        self.client.post("/account/login", json={"username":"unittest-user","master_password":"unittest-pass"})
+
+    def test_change_master_password_user_not_found(self):
+        test_username = "unittest-notfound-" + "".join(random.choices(string.digits, k=6))
+        test_password = "TestPass123!"
+        self.client.post("/account/create", json={"username": test_username, "master_password": test_password})
+        self.client.post("/account/login", json={"username": test_username, "master_password": test_password})
+        c.execute("DELETE FROM user_metadata WHERE username = ?", (test_username,))
+        conn.commit()
+        r = self.client.put("/account/password", json={"new_password": "newpass"})
+        self.assertEqual(r.status_code, 404)
+        self.assertEqual(r.get_json().get("error"), "user not found")
+        self.client.post("/account/login", json={"username":"unittest-user","master_password":"unittest-pass"})
+
+    def test_check_duplicate_when_locked(self):
+        self.client.post("/lock")
+        r = self.client.post("/check-duplicate", json={"site": "example.com", "username": "user"})
+        self.assertEqual(r.status_code, 423)
+        self.assertEqual(r.get_json().get("error"), "Vault is locked")
+        self.client.post("/unlock")
+        self.client.post("/account/login", json={"username":"unittest-user","master_password":"unittest-pass"})
+
+    def test_check_duplicate_not_exists(self):
+        site = "unittest-dup-check-" + "".join(random.choices(string.digits, k=6))
+        username = "uniqueuser"
+        r = self.client.post("/check-duplicate", json={"site": site, "username": username})
+        self.assertEqual(r.status_code, 200)
+        data = r.get_json()
+        self.assertIn("exists", data)
+        self.assertFalse(data.get("exists"))
+
+    def test_check_duplicate_exists(self):
+        site = "unittest-dup-exists-" + "".join(random.choices(string.digits, k=6))
+        username = "dupuser"
+        self.client.post("/add", json={"site": site, "username": username, "password": "TestPass123!"})
+        r = self.client.post("/check-duplicate", json={"site": site, "username": username})
+        self.assertEqual(r.status_code, 200)
+        data = r.get_json()
+        self.assertIn("exists", data)
+        self.assertTrue(data.get("exists"))
+        creds = self.client.get("/list").get_json()
+        match = next((i for i in creds if i.get("site") == site and i.get("username") == username), None)
+        if match:
+            self.client.delete(f"/delete/{match.get('id')}")
+
 if __name__ == "__main__":
     import unittest
     unittest.main(verbosity=2)
