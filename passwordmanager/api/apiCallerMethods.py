@@ -59,6 +59,10 @@ def account_login(username, master_password):
     })
     return response.json()
 
+def account_logout():
+    response = requests.post(f"{BASE_URL}/account/logout")
+    return response.json()
+
 def set_master_password(new_password):
     response = requests.put(f"{BASE_URL}/account/password", json={
         "new_password": new_password

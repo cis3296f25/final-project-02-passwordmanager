@@ -12,6 +12,7 @@ from resources.colors import Colors
 from resources.strings import Strings
 from passwordmanager.gui.widgets.listCredentialsWidget import ListCredentialsWidget
 from passwordmanager.gui.widgets.addCredentialsDialog import AddCredentialsDialog
+from passwordmanager.gui.login_dialogue import LoginDialog
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -44,18 +45,18 @@ class MainWindow(QMainWindow):
 
         # buttons
         add_button = QPushButton("Add New Credential")
-        exit_button = QPushButton("Exit")
+        logout_button = QPushButton("Logout")
 
         # button styling
         add_button.setStyleSheet(Strings.LARGE_BUTTON_STYLE)
-        exit_button.setStyleSheet(Strings.LARGE_BUTTON_STYLE)
+        logout_button.setStyleSheet(Strings.LARGE_BUTTON_STYLE)
 
         layout.addWidget(add_button)
-        layout.addWidget(exit_button)
+        layout.addWidget(logout_button)
 
         # Connect buttons
         add_button.clicked.connect(self.open_add_dialog)
-        exit_button.clicked.connect(self.close)
+        logout_button.clicked.connect(self.handle_logout)
 
     def apply_theme(self, theme):
         """Apply theme colors to this window"""
@@ -94,6 +95,17 @@ class MainWindow(QMainWindow):
 
     def refresh_credentials(self):
         self.credentials_list.load_credentials()
+    
+    def handle_logout(self):
+        apiCallerMethods.account_logout()
+        self.hide()
+        login = LoginDialog()
+        result = login.exec()
+        if result == QDialog.DialogCode.Accepted:
+            self.show()
+            self.refresh_credentials()
+        else:
+            self.close()
     
     def center(self):
         screen = QApplication.primaryScreen()

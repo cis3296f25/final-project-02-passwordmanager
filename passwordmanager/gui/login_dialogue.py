@@ -1,6 +1,7 @@
 from PyQt6.QtWidgets import (
-    QDialog, QVBoxLayout, QFormLayout, QLineEdit, QPushButton, QLabel, QHBoxLayout
+    QDialog, QVBoxLayout, QFormLayout, QLineEdit, QPushButton, QLabel, QHBoxLayout, QApplication
 )
+from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QFont, QIcon
 from passwordmanager.utils.theme_manager import theme_manager
 from resources.colors import Colors
@@ -17,13 +18,16 @@ class LoginDialog(QDialog):
         
         self.setWindowTitle("Login")
         self.setWindowIcon(QIcon(Strings.WINDOW_ICON_PATH))
-        self.setMinimumWidth(320)
+        self.setFixedSize(375, 225)
 
         layout = QVBoxLayout()
 
         title = QLabel("Offline Password Manager")
         title.setFont(QFont("Segoe UI", 16))
+        title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(title)
+        
+        layout.addSpacing(15)
 
         form = QFormLayout()
         self.username = QLineEdit()
@@ -32,6 +36,8 @@ class LoginDialog(QDialog):
         form.addRow("Username:", self.username)
         form.addRow("Master Password:", self.password)
         layout.addLayout(form)
+
+        layout.addSpacing(20)
 
         buttons = QHBoxLayout()
         self.login_btn = QPushButton("Login")
@@ -52,6 +58,7 @@ class LoginDialog(QDialog):
         self.create_btn.clicked.connect(self.handle_create)
 
         self.apply_theme(theme_manager.current_theme)
+        self.center()
 
     def apply_theme(self, theme):
         colors = theme_manager.get_theme_colors(theme)
@@ -93,5 +100,14 @@ class LoginDialog(QDialog):
                 self.status.setText(resp.get("error", "Create failed"))
         except Exception as e:
             self.status.setText(f"Error: {e}")
+
+    def center(self):
+        screen = QApplication.primaryScreen()
+        if screen is None:
+            return
+        screen_center = screen.availableGeometry().center()
+        frame_geom = self.frameGeometry()
+        frame_geom.moveCenter(screen_center)
+        self.move(frame_geom.topLeft())
 
 
