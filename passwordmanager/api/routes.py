@@ -7,6 +7,16 @@ import os
 from passwordmanager.core.passwordManager import conn, c
 from passwordmanager.core.kdf import default_kdf_params, derive_wrap_key
 from passwordmanager.core.vmk import generate_vmk, unwrap_vmk, wrap_vmk
+from passwordmanager.core.export_service import (
+    fetch_decryptable_credentials,
+    serialize_export_json,
+    serialize_export_csv,
+)
+from passwordmanager.core.import_service import (
+    parse_csv,
+    import_items,
+)
+from datetime import datetime
 
 # Flask API
 app = Flask(__name__)
@@ -81,6 +91,84 @@ def generate_password(length=12):
     chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()"
     password = ''.join(secrets.choice(chars) for _ in range(length))
     return jsonify({"password": password})
+
+# Export endpoint
+@app.route("/export", methods=["GET"])
+def export_credentials():
+    global vault_locked, current_vmk_cipher
+    if vault_locked:
+        return jsonify({"error": "Vault is locked"}), 423
+    if current_vmk_cipher is None:
+        return jsonify({"error": "Not logged in"}), 401
+
+    fmt = (request.args.get("format") or "json").lower()
+    items = fetch_decryptable_credentials(c, current_vmk_cipher)
+
+    if fmt == "csv":
+        csv_text = serialize_export_csv(items)
+        filename = f"passwords-{datetime.now().strftime('%Y%m%d-%H%M%S')}.csv"
+        resp = app.response_class(csv_text, mimetype="text/csv")
+        resp.headers["Content-Disposition"] = f'attachment; filename="{filename}"'
+        return resp
+
+    # default JSON
+    json_text = serialize_export_json(items)
+    return app.response_class(json_text, mimetype="application/json")
+
+# Import endpoint (CSV)
+@app.route("/import", methods=["POST"])
+def import_credentials():
+    global vault_locked, current_vmk_cipher
+    if vault_locked:
+        return jsonify({"error": "Vault is locked"}), 423
+    if current_vmk_cipher is None:
+        return jsonify({"error": "Not logged in"}), 401
+
+    csv_text = ""
+    content_type = request.content_type or ""
+    if content_type.startswith("text/csv"):
+        csv_text = request.get_data(as_text=True) or ""
+    elif content_type.startswith("multipart/form-data"):
+        uploaded = request.files.get("file")
+        if uploaded:
+            csv_text = uploaded.stream.read().decode("utf-8", errors="replace")
+    else:
+        # Try to read body as text regardless
+        csv_text = request.get_data(as_text=True) or ""
+
+    items, parse_errors = parse_csv(csv_text)
+    if any(err.startswith("missing required header") for err in parse_errors):
+        return jsonify({"error": "missing required columns", "details": parse_errors}), 400
+
+    # Duplicate policy from query param
+    allow_param = (request.args.get("allow_duplicates") or "").strip().lower()
+    allow_duplicates = allow_param in ("1", "true", "yes", "y")
+
+    # If not allowing duplicates, pre-filter duplicates and count as skipped
+    skipped = 0
+    items_to_insert = []
+    if not allow_duplicates:
+        for it in items:
+            site = (it.get("site") or "").strip()
+            username = (it.get("username") or "").strip()
+            if not site or not username:
+                # will be counted as error by import_items; keep it to propagate
+                items_to_insert.append(it)
+                continue
+            c.execute("SELECT 1 FROM credentials WHERE site = ? AND username = ?", (site, username))
+            if c.fetchone():
+                skipped += 1
+                continue
+            items_to_insert.append(it)
+    else:
+        items_to_insert = items
+
+    summary = import_items(c, items_to_insert, current_vmk_cipher)
+    summary["skipped"] = summary.get("skipped", 0) + skipped
+    # commit on success/partial success
+    conn.commit()
+    summary["parse_errors"] = len(parse_errors)
+    return jsonify(summary), 200
 
 # List all stored credentials
 @app.route("/list", methods=["GET"])

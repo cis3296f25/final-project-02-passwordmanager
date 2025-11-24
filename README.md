@@ -10,7 +10,7 @@ A local password manager that lets you securely store and retrieve your account 
 The project must be built from source using the instruction below.
 
 
-## To run from the source code
+## How To Build: To Run From The Source Code
 - Download the latest binary from the Release section on the right on GitHub.  
 - On the command line start virtual environment:
 ```
@@ -31,16 +31,25 @@ Run code:
 python3 main.py
 ```
 
-# How to contribute
-Follow this project board to know the latest status of the project: [https://github.com/orgs/cis3296f25/projects/71]  
-
-### How to build
-- Use this github repository: ... 
-- Specify what branch to use for a more stable release or for cutting edge development.  
-- Use InteliJ 11
-- Specify additional library to download if needed 
-- What file and target to compile and run. 
-- What is expected to happen when the app start.
+# Usage Overview
+## Account Creation: TODO
+## Login: TODO
+## Adding a Password to the Vault: TODO (include sort/filter/search)
+## Delete and Edit: TODO
+## Changing the Master Password: TODO
+## All Other User-Configurable Settings: TODO
+## Export/Import
+- Export:
+  - Via Settings > Export: choose JSON (default) or CSV. Confirms plaintext risk, then saves locally.
+  - API: GET /export?format=json|csv
+    - JSON: { "version": 1, "exported_at": "...", "items": [ { "site","username","password" } ] }
+    - CSV: header is `site,username,password`
+- Import (CSV):
+  - Via Settings > Import CSV: select a CSV with header site,username,password.
+  - API: POST /import with text or csv body.
+  - Skips duplicates (site+username). Shows inserted/skipped/errors.
+- Note: Files contain plaintext passwords. Store securely and delete when done
+## Logout: TODO
 
 # Component Diagram
 ```mermaid
@@ -117,3 +126,7 @@ graph TB
 ```
 
 This diagram shows how the password manager is built. The GUI (blue boxes) is what users see - login screen, main window, dialogs for adding/editing passwords. When you do something in the GUI, it sends HTTP requests through the API layer (red boxes) to the core logic (purple boxes), which handles encryption and saves everything to the database. Even though it's a desktop app, we use a REST API internally so the GUI doesn't have to know about encryption or databases - it just makes requests and gets responses back. The whole thing starts from main.py which fires up both the web server and the GUI.
+
+
+# How to contribute
+Follow this project board to know the latest status of the project: [https://github.com/orgs/cis3296f25/projects/71]  
