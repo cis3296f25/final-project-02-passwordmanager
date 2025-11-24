@@ -113,3 +113,38 @@ class TestApiCallerMethods(unittest.TestCase):
         login_result = acm.account_login(test_username, test_password)
         self.assertIsInstance(login_result, dict)
         self.assertEqual(login_result.get("status"), "logged in")
+
+    def test_set_master_password(self):
+        new_password = "NewMasterPass123!" + "".join(random.choices(string.ascii_letters + string.digits, k=4))
+        result = acm.set_master_password(new_password)
+        self.assertIsInstance(result, dict)
+        self.assertEqual(result.get("status"), "password updated")
+
+    def test_check_duplicate_credential(self):
+        site = "acm-dup-" + "".join(random.choices(string.digits, k=6))
+        username = "dupuser"
+        result = acm.check_duplicate_credential(site, username)
+        self.assertIsInstance(result, dict)
+        self.assertIn("exists", result)
+        self.assertFalse(result.get("exists"))
+        
+        acm.add_credential(site, username, "TestPass123!")
+        result = acm.check_duplicate_credential(site, username)
+        self.assertIsInstance(result, dict)
+        self.assertIn("exists", result)
+        self.assertTrue(result.get("exists"))
+        
+        creds = acm.get_all_credentials()
+        match = next((i for i in creds if i.get("site") == site), None)
+        if match:
+            acm.delete_credential(match.get("id"))
+
+    def test_account_logout(self):
+        result = acm.account_logout()
+        self.assertIsInstance(result, dict)
+        self.assertEqual(result.get("status"), "vault locked")
+        
+        status = acm.get_status()
+        self.assertTrue(status.get("vault_locked"))
+        
+        acm.account_login(self.username, self.password)
