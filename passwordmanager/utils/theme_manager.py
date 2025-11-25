@@ -69,6 +69,7 @@ class ThemeManager:
                 'input_bg': Colors.WHITE,
                 'input_text': Colors.BLACK,
                 'card_bg': Colors.SUPER_LIGHT_GREY,
+                'pressed_card_bg': Colors.SUPER_LIGHT_GREY_PRESSED
             }
         else: 
             return {
@@ -78,6 +79,7 @@ class ThemeManager:
                 'input_bg': Colors.LIGHT_GREY,
                 'input_text': Colors.WHITE,
                 'card_bg': Colors.LIGHT_GREY,
+                'pressed_card_bg': Colors.LIGHT_GREY_PRESSED
             }
 
     def get_theme_button_styles(self, theme=None):
