@@ -50,6 +50,7 @@ class ListCredentialsWidget(QWidget):
 
         # filter button that opens a dropdown menu
         self.filter_button = QPushButton("") 
+        self.filter_button.setToolTip("Sort Options")
         filter_icon = QIcon(QPixmap(Strings.FILTER_ICON_PATH))
         self.filter_button.setIcon(filter_icon)
         self.filter_button.setFixedWidth(40) 
@@ -64,6 +65,7 @@ class ListCredentialsWidget(QWidget):
         self.filter_button.clicked.connect(self.show_filter_menu)           
         # Settings button
         settings_button = QPushButton("")
+        settings_button.setToolTip("Settings")
         settings_button.setStyleSheet(Strings.SMALL_BUTTON_STYLE)
         settings_icon = QIcon(QPixmap(Strings.SETTINGS_ICON_PATH)) 
         settings_button.setIcon(settings_icon)
@@ -199,75 +201,87 @@ class ListCredentialsWidget(QWidget):
         username = QLabel(f"{cred['username']}")
         username.setObjectName("username_label") # set obj name for searching
 
-        # show 12 bullets by default to hide password length
-        password_label = QLabel("•" * 12)
 
         site.setStyleSheet(f"color: {colors['text']}; font-size: 12px;")
         username.setStyleSheet(f"color: {colors['text']}; font-size: 12px;")
-        password_label.setStyleSheet(f"color: {colors['text']}; font-size: 16px;")
 
         # buttons (really should refactor this later) ##########################################
-        copy_button = QPushButton()
         edit_button = QPushButton()
         delete_button = QPushButton()
-        show_button = QPushButton("👁")  # show/hide password toggle
+        # show_button = QPushButton("👁")  # show/hide password toggle
 
         # button icons
-        copy_icon = QIcon(QPixmap(Strings.COPY_ICON_PATH)) 
         edit_icon = QIcon(QPixmap(Strings.EDIT_ICON_PATH)) 
         delete_icon = QIcon(QPixmap(Strings.DELETE_ICON_PATH)) 
 
-        copy_button.setIcon(copy_icon)
         edit_button.setIcon(edit_icon)
         delete_button.setIcon(delete_icon)
 
         # styling
-        copy_button.setStyleSheet(Strings.SMALL_BUTTON_STYLE)
         edit_button.setStyleSheet(Strings.SMALL_BUTTON_STYLE)
         delete_button.setStyleSheet(Strings.DELETE_BUTTON_STYLE)
-        show_button.setStyleSheet(Strings.SMALL_BUTTON_STYLE)
+        # show_button.setStyleSheet(Strings.SMALL_BUTTON_STYLE)
         
         # Set fixed height for all buttons to ensure consistency
-        copy_button.setFixedHeight(button_height)
         edit_button.setFixedHeight(button_height)
         delete_button.setFixedHeight(button_height)
-        show_button.setFixedHeight(button_height)
+        edit_button.setFixedWidth(30) 
+        delete_button.setFixedWidth(30)
+        # show_button.setFixedHeight(button_height)
 
-        # copy password to clipboard
-        copy_button.clicked.connect(
-            lambda _, p=password_text: self.copy_to_clipboard(p, copy_button)
-        )
+        
         edit_button.clicked.connect(lambda _, id=cred['id']: self.edit_credential(id))
         delete_button.clicked.connect(lambda _, id=cred['id']: self.delete_credential(id))
 
         # per-row visibility state
         is_visible = {"value": False}
 
-        def toggle_password():
-            if is_visible["value"]:
-                # hide password - always show 12 dots to hide length
-                password_label.setText("•" * 12)
-                show_button.setText("👁")
-                is_visible["value"] = False
-            else:
-                # show password
-                password_label.setText(password_text)
-                show_button.setText("🙈")
-                is_visible["value"] = True
+        # COMMENTED OUT: because it will be in the drop down menu instead
+        
+        # def toggle_password():
+        #     if is_visible["value"]:
+        #         # hide password - always show 12 dots to hide length
+        #         password_label.setText("•" * 12)
+        #         show_button.setText("👁")
+        #         is_visible["value"] = False
+        #     else:
+        #         # show password
+        #         password_label.setText(password_text)
+        #         show_button.setText("🙈")
+        #         is_visible["value"] = True
 
-        show_button.clicked.connect(toggle_password)
+        # show_button.clicked.connect(toggle_password)
 
         button_layout = QHBoxLayout()
-        # put the eye next to the password, before the other action buttons
-        button_layout.addWidget(show_button)
-        button_layout.addWidget(copy_button)
+        # button_layout.addWidget(show_button)
         button_layout.addWidget(edit_button)
         button_layout.addWidget(delete_button)
         ###########################################################################################
 
+        password_copy_button = QPushButton("••••••••••••")
+        password_copy_button.setToolTip("Copy password")
+        # copy password to clipboard
+        password_copy_button.clicked.connect(
+            lambda _, p=password_text: self.copy_to_clipboard(p, password_copy_button)
+        )
+        password_copy_button.setStyleSheet(f"""
+            QPushButton{{
+            color: {colors['text']};
+            }}
+            QPushButton:hover {{
+            background-color: {colors['pressed_card_bg']};
+            color: {colors['text']};
+            }}
+            QPushButton:pressed {{
+                border: 2px solid {colors['card_bg']};
+            }}
+            QToolTip {{            
+            }}
+            """)
+        
         card_layout.addWidget(site)
         card_layout.addWidget(username)
-        card_layout.addWidget(password_label)
+        card_layout.addWidget(password_copy_button)
         card_layout.addLayout(button_layout)
 
         card.setStyleSheet(f"""
