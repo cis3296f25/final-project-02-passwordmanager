@@ -6,6 +6,24 @@ import requests
 
 BASE_URL = "http://127.0.0.1:5000"
 
+# Export
+def export_credentials(fmt: str = "json"):
+    fmt = (fmt or "json").lower()
+    response = requests.get(f"{BASE_URL}/export", params={"format": fmt})
+    if fmt == "csv":
+        return response.text
+    try:
+        return response.json()
+    except Exception:
+        return response.text
+
+# Import (CSV)
+def import_credentials_csv(csv_text: str, allow_duplicates: bool = False):
+    headers = {"Content-Type": "text/csv"}
+    params = {"allow_duplicates": "true"} if allow_duplicates else None
+    response = requests.post(f"{BASE_URL}/import", params=params, data=csv_text, headers=headers)
+    return response.json()
+
 #calls POST
 def add_credential(site, username, password):
     response = requests.post(f"{BASE_URL}/add", json={
