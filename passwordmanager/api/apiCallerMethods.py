@@ -12,10 +12,7 @@ def export_credentials(fmt: str = "json"):
     response = requests.get(f"{BASE_URL}/export", params={"format": fmt})
     if fmt == "csv":
         return response.text
-    try:
-        return response.json()
-    except Exception:
-        return response.text
+    return response.json()
 
 # Import (CSV)
 def import_credentials_csv(csv_text: str, allow_duplicates: bool = False):

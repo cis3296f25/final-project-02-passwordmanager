@@ -42,7 +42,7 @@ class LoginDialog(QDialog):
         buttons = QHBoxLayout()
         self.login_btn = QPushButton("Login")
         self.create_btn = QPushButton("Create Account")
-        button_style = Strings.SMALL_BUTTON_STYLE
+        button_style = theme_manager.get_small_button_style()
         self.login_btn.setStyleSheet(button_style)
         self.create_btn.setStyleSheet(button_style)
         buttons.addWidget(self.login_btn)
@@ -57,28 +57,8 @@ class LoginDialog(QDialog):
         self.login_btn.clicked.connect(self.handle_login)
         self.create_btn.clicked.connect(self.handle_create)
 
-        self.apply_theme(theme_manager.current_theme)
+        theme_manager.apply_theme_to_window(self, theme_manager.current_mode)
         self.center()
-
-    def apply_theme(self, theme):
-        colors = theme_manager.get_theme_colors(theme)
-        
-        self.setStyleSheet(f"""
-        QDialog {{
-            background-color: {colors['background']};
-            color: {colors['text']};
-        }}
-        QLabel {{
-            background-color: {colors['background']};
-            color: {colors['text']};
-        }}
-        QLineEdit {{
-            background-color: {colors['background-button']};
-            color: {colors['input_text']};
-            padding: 5px;
-            border-radius: 4px;
-        }}
-        """)
 
     def handle_login(self):
         try:

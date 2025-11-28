@@ -1,0 +1,13 @@
+{
+    "name": "default",
+    "background": "#1e1e2f",
+    "background-button": "#31314d",
+    "text": "#ffffff",
+    "input_bg": "#31314d",
+    "input_text": "#ffffff",
+    "card_bg": "#31314d",
+    "pressed_card_bg": "#26263b",
+    "accent": "#8ACE00",
+    "accent_hover": "#6DA400",
+    "accent_pressed": "#3C5902"
+}

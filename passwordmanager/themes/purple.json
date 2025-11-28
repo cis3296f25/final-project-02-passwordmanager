@@ -1,0 +1,14 @@
+{
+    "name": "purple",
+    "background": "#1a0f1a",
+    "background-button": "#2d1f2d",
+    "text": "#ffffff",
+    "input_bg": "#2d1f2d",
+    "input_text": "#ffffff",
+    "card_bg": "#2d1f2d",
+    "pressed_card_bg": "#1f1420",
+    "accent": "#C77DFF",
+    "accent_hover": "#B266FF",
+    "accent_pressed": "#9D4EDD"
+}
+

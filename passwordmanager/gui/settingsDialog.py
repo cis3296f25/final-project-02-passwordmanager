@@ -1,7 +1,7 @@
 from PyQt6.QtWidgets import (
     QPushButton, QVBoxLayout, QLabel,
     QDialog, QLineEdit, QFormLayout, QHBoxLayout, QWidget,
-    QFileDialog, QMessageBox, QRadioButton, QButtonGroup
+    QFileDialog, QMessageBox, QRadioButton, QButtonGroup, QComboBox
 )
 from PyQt6.QtGui import QFont, QIcon
 from PyQt6.QtCore import Qt
@@ -23,7 +23,8 @@ class settingsDialog(QDialog):
         # Store parent reference for theme propagation
         self.parent_window = parent
         
-        # Current theme state from theme manager
+        # Current mode and theme state from theme manager
+        self.current_mode = theme_manager.current_mode
         self.current_theme = theme_manager.current_theme
 
         # Window setup
@@ -38,23 +39,46 @@ class settingsDialog(QDialog):
         # Input form fields
         form_layout = QFormLayout()
 
-        # Theme section with Light/Dark buttons
-        theme_layout = QHBoxLayout()
+        # Themes section with dropdown
+        themes_layout = QVBoxLayout()
+        
+        # Theme color palette dropdown
+        self.theme_combo = QComboBox()
+        self.theme_combo.addItems(["Default", "Red", "Green", "Blue", "Purple"])
+        self.theme_combo.currentIndexChanged.connect(self.on_color_theme_changed)
+        
+        # Set view to show all items without scrolling (5 items) - add extra padding
+        view = self.theme_combo.view()
+        row_height = view.sizeHintForRow(0)
+        view.setMinimumHeight(row_height * 5 + 10)  # Add 10px padding
+        
+        # Set current selection based on theme_manager
+        theme_index_map = {"default": 0, "red": 1, "green": 2, "blue": 3, "purple": 4}
+        current_theme_lower = self.current_theme.lower()
+        if current_theme_lower in theme_index_map:
+            self.theme_combo.setCurrentIndex(theme_index_map[current_theme_lower])
+        
+        themes_layout.addWidget(self.theme_combo)
+        
+        # Light/Dark mode buttons
+        mode_layout = QHBoxLayout()
         self.light_button = QPushButton("Light")
         self.dark_button = QPushButton("Dark")
-
-        # Connect theme button actions
-        self.light_button.clicked.connect(self.set_light_theme)
-        self.dark_button.clicked.connect(self.set_dark_theme)
-
-        theme_layout.addWidget(self.light_button)
-        theme_layout.addWidget(self.dark_button)
         
-        form_layout.addRow("Theme:", theme_layout)
+        # Connect mode button actions
+        self.light_button.clicked.connect(self.set_light_mode)
+        self.dark_button.clicked.connect(self.set_dark_mode)
+        
+        mode_layout.addWidget(self.light_button)
+        mode_layout.addWidget(self.dark_button)
+        
+        themes_layout.addLayout(mode_layout)
+        
+        form_layout.addRow("Themes:", themes_layout)
         
         # Change password section
         self.change_password_button = QPushButton("Change Password")
-        self.change_password_button.setStyleSheet(Strings.SETTINGS_BUTTON_STYLE)
+        self.change_password_button.setStyleSheet(theme_manager.get_settings_button_style())
         self.change_password_button.clicked.connect(self.open_change_password_window)
         
         form_layout.addRow("Password:", self.change_password_button)
@@ -90,7 +114,7 @@ class settingsDialog(QDialog):
 
         self.close_button = QPushButton("Close")
         self.close_button.clicked.connect(self.close)
-        self.close_button.setStyleSheet(Strings.LARGE_BUTTON_STYLE)
+        self.close_button.setStyleSheet(theme_manager.get_large_button_style())
 
         button_layout.addWidget(self.close_button)
         layout.addLayout(button_layout)
@@ -98,10 +122,62 @@ class settingsDialog(QDialog):
         self.setLayout(layout)
         
         # Let the theme manager handle initial theming
-        theme_manager.apply_theme_to_window(self, theme_manager.current_theme)
+        theme_manager.apply_theme_to_window(self, theme_manager.current_mode)
 
     def update_theme_buttons(self):
-        colors = theme_manager.get_theme_colors(self.current_theme)
+        # Sync current theme and mode from theme_manager
+        self.current_mode = theme_manager.current_mode
+        self.current_theme = theme_manager.current_theme
+        
+        colors = theme_manager.get_theme_colors(self.current_mode)
+        
+        # Update dropdown to reflect current color theme selection (only if it exists)
+        if hasattr(self, 'theme_combo'):
+            theme_index_map = {"default": 0, "red": 1, "green": 2, "blue": 3, "purple": 4}
+            current_theme_lower = self.current_theme.lower()
+            if current_theme_lower in theme_index_map:
+                # Block signals temporarily to avoid triggering on_color_theme_changed
+                self.theme_combo.blockSignals(True)
+                self.theme_combo.setCurrentIndex(theme_index_map[current_theme_lower])
+                self.theme_combo.blockSignals(False)
+            
+            # Style the dropdown with theme colors
+            combo_style = f"""
+        QComboBox {{
+            background-color: {colors['input_bg']};
+            color: {colors['text']};
+            padding: 5px;
+            border-radius: 4px;
+            border: 1px solid {colors['accent']};
+        }}
+        QComboBox:hover {{
+            border: 2px solid {colors['accent']};
+            padding: 4px;
+        }}
+        QComboBox::drop-down {{
+            border: none;
+            width: 25px;
+            background-color: {colors['input_bg']};
+        }}
+        QComboBox::drop-down:hover {{
+            background-color: {colors['accent_hover']};
+        }}
+        QComboBox QAbstractItemView {{
+            background-color: {colors['input_bg']};
+            color: {colors['text']};
+            selection-background-color: {colors['accent']};
+            selection-color: {colors['background']};
+            border: 1px solid {colors['accent']};
+        }}
+        QComboBox QAbstractItemView::item {{
+            padding: 4px;
+        }}
+        QComboBox QAbstractItemView::item:hover {{
+            background-color: {colors['accent_hover']};
+            color: {colors['background']};
+        }}
+        """
+            self.theme_combo.setStyleSheet(combo_style)
         
         base_theme_button_style = f"""
         QPushButton {{
@@ -110,33 +186,35 @@ class settingsDialog(QDialog):
             border-radius: 4px;
         }}
         QPushButton:hover {{
-            background-color: {Colors.BRAT_GREEN_BUTTON_HOVER};
+            background-color: {colors['accent_hover']};
         }}
         """
         
         selected_theme_button_style = f"""
         QPushButton {{
             background-color: {colors['background-button']};
-            border: 2px solid {Colors.BRAT_GREEN};
+            border: 2px solid {colors['accent']};
             padding: 8px 16px;
             border-radius: 4px;
         }}
         QPushButton:hover {{
-            background-color: {Colors.BRAT_GREEN_BUTTON_HOVER};
+            background-color: {colors['accent_hover']};
         }}
         """
         
-        if self.current_theme == "light":
-            self.light_button.setStyleSheet(selected_theme_button_style)
-            self.dark_button.setStyleSheet(base_theme_button_style)
-        else:
-            # Dark theme selected
-            self.dark_button.setStyleSheet(selected_theme_button_style)
-            self.light_button.setStyleSheet(base_theme_button_style)
+        # Only update buttons if they exist (check for attribute)
+        if hasattr(self, 'light_button') and hasattr(self, 'dark_button'):
+            if self.current_mode == "light":
+                self.light_button.setStyleSheet(selected_theme_button_style)
+                self.dark_button.setStyleSheet(base_theme_button_style)
+            else:
+                # Dark mode selected
+                self.dark_button.setStyleSheet(selected_theme_button_style)
+                self.light_button.setStyleSheet(base_theme_button_style)
 
     def update_button_theme(self):
-        """Update the Change Password button styling based on current theme"""
-        colors = theme_manager.get_theme_colors(self.current_theme)
+        # Update the Change Password button styling based on current mode
+        colors = theme_manager.get_theme_colors(self.current_mode)
         
         button_style = f"""
         QPushButton {{
@@ -146,14 +224,18 @@ class settingsDialog(QDialog):
             border-radius: 4px;
         }}
         QPushButton:hover {{
-            background-color: {Colors.BRAT_GREEN_BUTTON_HOVER};
-            color: {Colors.BLACK};
+            background-color: {colors['accent_hover']};
+            color: {colors['text']};
         }}
         """
-        self.change_password_button.setStyleSheet(button_style)
+        # Only update buttons if they exist (check for attribute)
+        if hasattr(self, 'change_password_button'):
+            self.change_password_button.setStyleSheet(button_style)
         # also style export/import buttons
-        self.export_button.setStyleSheet(button_style)
-        self.import_button.setStyleSheet(button_style)
+        if hasattr(self, 'export_button'):
+            self.export_button.setStyleSheet(button_style)
+        if hasattr(self, 'import_button'):
+            self.import_button.setStyleSheet(button_style)
         # Improve radio button contrast (indicator ring more visible on dark backgrounds)
         radio_style = f"""
         QRadioButton {{
@@ -164,25 +246,35 @@ class settingsDialog(QDialog):
             width: 14px;
             height: 14px;
             border-radius: 7px;
-            border: 2px solid {Colors.BRAT_GREEN};  /* high-contrast ring */
+            border: 2px solid {colors['accent']};  /* high-contrast ring */
             background: transparent;
         }}
         QRadioButton::indicator:hover {{
-            border-color: {Colors.BRAT_GREEN_BUTTON_HOVER};
+            border-color: {colors['accent_hover']};
         }}
         QRadioButton::indicator:checked {{
-            background-color: {Colors.BRAT_GREEN};  /* filled when selected */
-            border-color: {Colors.BRAT_GREEN};
+            background-color: {colors['accent']};  /* filled when selected */
+            border-color: {colors['accent']};
         }}
         """
-        self.export_json_radio.setStyleSheet(radio_style)
-        self.export_csv_radio.setStyleSheet(radio_style)
+        if hasattr(self, 'export_json_radio'):
+            self.export_json_radio.setStyleSheet(radio_style)
+        if hasattr(self, 'export_csv_radio'):
+            self.export_csv_radio.setStyleSheet(radio_style)
   
-    def set_light_theme(self):
-        theme_manager.set_theme("light")
+    def on_color_theme_changed(self, index):
+        theme_map = {0: "default", 1: "red", 2: "green", 3: "blue", 4: "purple"}
+        if index in theme_map:
+            theme_manager.set_theme(theme_map[index])
+            self.current_theme = theme_map[index]
+    
+    def set_light_mode(self):
+        theme_manager.set_mode("light")
+        self.current_mode = "light"
 
-    def set_dark_theme(self):
-        theme_manager.set_theme("dark")
+    def set_dark_mode(self):
+        theme_manager.set_mode("dark")
+        self.current_mode = "dark"
         
     def closeEvent(self, event):
         theme_manager.unregister_window(self)
