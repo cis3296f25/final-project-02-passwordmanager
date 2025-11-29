@@ -20,7 +20,8 @@ a = Analysis(
     pathex=[os.getcwd()],
     binaries=[],   
     datas=[
-    (os.path.join(os.getcwd(), 'resources/images'), 'resources/images'),], 
+    (os.path.join(os.getcwd(), 'resources/images'), 'resources/images'),
+    (os.path.join(os.getcwd(), 'passwordmanager/themes'), 'passwordmanager/themes'),], 
     hiddenimports=[], 
     hookspath=[],
     hooksconfig={},
