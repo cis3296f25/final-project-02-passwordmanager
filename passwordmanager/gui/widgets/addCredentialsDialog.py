@@ -39,12 +39,12 @@ class AddCredentialsDialog(QDialog):
         password_row = QHBoxLayout()
         password_row.addWidget(self.password_input)
         
-        button_style = Strings.SMALL_BUTTON_STYLE
+        button_style = theme_manager.get_small_button_style()
 
         self.show_password_button = QPushButton("👁")
         self.show_password_button.setCheckable(True)
         self.show_password_button.setFixedWidth(32)
-        self.show_password_button.setStyleSheet(Strings.EYE_BUTTON_STYLE)
+        self.show_password_button.setStyleSheet(theme_manager.get_eye_button_style())
         self.show_password_button.toggled.connect(self.toggle_password_visibility)
         password_row.addWidget(self.show_password_button)
 

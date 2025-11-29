@@ -1,0 +1,14 @@
+{
+    "name": "red",
+    "background": "#1a0a0a",
+    "background-button": "#3d1f1f",
+    "text": "#ffffff",
+    "input_bg": "#3d1f1f",
+    "input_text": "#ffffff",
+    "card_bg": "#3d1f1f",
+    "pressed_card_bg": "#2d0f0f",
+    "accent": "#FF6B6B",
+    "accent_hover": "#FF5252",
+    "accent_pressed": "#D32F2F"
+}
+

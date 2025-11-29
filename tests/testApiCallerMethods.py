@@ -148,3 +148,79 @@ class TestApiCallerMethods(unittest.TestCase):
         self.assertTrue(status.get("vault_locked"))
         
         acm.account_login(self.username, self.password)
+    
+    def test_export_credentials_json(self):
+        # Test JSON export (default)
+        result = acm.export_credentials("json")
+        self.assertIsInstance(result, dict)
+        self.assertIn("items", result)
+        self.assertIn("version", result)
+        
+        # Test default (no parameter)
+        result_default = acm.export_credentials()
+        self.assertIsInstance(result_default, dict)
+        self.assertIn("items", result_default)
+        self.assertIn("version", result_default)
+        
+        # Test case insensitive
+        result_upper = acm.export_credentials("JSON")
+        self.assertIsInstance(result_upper, dict)
+        self.assertIn("items", result_upper)
+    
+    def test_export_credentials_csv(self):
+        # Test CSV export
+        result = acm.export_credentials("csv")
+        self.assertIsInstance(result, str)
+        self.assertIn("site", result.lower())
+        self.assertIn("username", result.lower())
+        self.assertIn("password", result.lower())
+        
+        # Test case insensitive
+        result_upper = acm.export_credentials("CSV")
+        self.assertIsInstance(result_upper, str)
+    
+    def test_export_credentials_none_format(self):
+        # Test None format defaults to json
+        result = acm.export_credentials(None)
+        self.assertIsInstance(result, dict)
+    
+    def test_import_credentials_csv(self):
+        # Create test CSV data
+        csv_data = "site,username,password\ntest-site-import,testuser,TestPass123!"
+        
+        # Test import without allowing duplicates
+        result = acm.import_credentials_csv(csv_data, allow_duplicates=False)
+        self.assertIsInstance(result, dict)
+        self.assertIn("inserted", result)
+        self.assertIn("skipped", result)
+        
+        # Cleanup
+        creds = acm.get_all_credentials()
+        match = next((i for i in creds if i.get("site") == "test-site-import"), None)
+        if match:
+            acm.delete_credential(match.get("id"))
+    
+    def test_import_credentials_csv_allow_duplicates(self):
+        # First add a credential
+        site = "test-dup-import"
+        username = "dupuser"
+        acm.add_credential(site, username, "OriginalPass123!")
+        
+        # Create CSV with duplicate
+        csv_data = f"site,username,password\n{site},{username},NewPass123!"
+        
+        # Test import with allow_duplicates=False (should skip)
+        result = acm.import_credentials_csv(csv_data, allow_duplicates=False)
+        self.assertIsInstance(result, dict)
+        self.assertGreaterEqual(result.get("skipped", 0), 1)
+        
+        # Test import with allow_duplicates=True (should insert)
+        result_allow = acm.import_credentials_csv(csv_data, allow_duplicates=True)
+        self.assertIsInstance(result_allow, dict)
+        self.assertGreaterEqual(result_allow.get("inserted", 0), 1)
+        
+        # Cleanup - delete all instances
+        creds = acm.get_all_credentials()
+        for cred in creds:
+            if cred.get("site") == site and cred.get("username") == username:
+                acm.delete_credential(cred.get("id"))

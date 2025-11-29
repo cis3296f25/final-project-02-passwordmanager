@@ -17,9 +17,6 @@ class ChangePasswordWindow(QDialog):
         # Store parent reference for theme propagation
         self.parent_window = parent
         
-        # Current theme state from theme manager
-        self.current_theme = theme_manager.current_theme
-        
         self.setWindowTitle("Change Master Password")
         
         self.setMinimumWidth(300)
@@ -49,14 +46,16 @@ class ChangePasswordWindow(QDialog):
 
         self.check_button = QPushButton("Submit")
         self.check_button.clicked.connect(self.set_master_password)
-        self.check_button.setStyleSheet(Strings.LARGE_BUTTON_STYLE)
+        self.check_button.setStyleSheet(theme_manager.get_large_button_style())
 
         button_layout.addWidget(self.check_button)
         
         layout.addLayout(button_layout)
         
-        theme_manager.apply_theme_to_window(self, self.current_theme)
         self.setLayout(layout)
+        
+        # Apply theme with current mode (not theme parameter)
+        theme_manager.apply_theme_to_window(self, theme_manager.current_mode)
         
     
     def set_master_password(self):

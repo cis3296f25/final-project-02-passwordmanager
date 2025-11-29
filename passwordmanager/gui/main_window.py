@@ -28,9 +28,6 @@ class MainWindow(QMainWindow):
         self.setMinimumWidth(520)
         self.setMinimumHeight(575)
 
-        # Apply initial theme
-        self.apply_theme(theme_manager.current_theme)
-
         # set central widget (similar to panels in jpanel)
         central = QWidget()
         self.setCentralWidget(central)
@@ -43,25 +40,23 @@ class MainWindow(QMainWindow):
         self.credentials_list = ListCredentialsWidget(self)
         layout.addWidget(self.credentials_list)
 
-        # buttons
-        add_button = QPushButton("Add New Credential")
-        logout_button = QPushButton("Logout")
+        # buttons - store as instance variables so we can update them when theme changes
+        self.add_button = QPushButton("Add New Credential")
+        self.logout_button = QPushButton("Logout")
 
         # button styling
-        add_button.setStyleSheet(Strings.LARGE_BUTTON_STYLE)
-        logout_button.setStyleSheet(Strings.LARGE_BUTTON_STYLE)
+        self.add_button.setStyleSheet(theme_manager.get_large_button_style())
+        self.logout_button.setStyleSheet(theme_manager.get_large_button_style())
 
-        layout.addWidget(add_button)
-        layout.addWidget(logout_button)
+        layout.addWidget(self.add_button)
+        layout.addWidget(self.logout_button)
 
         # Connect buttons
-        add_button.clicked.connect(self.open_add_dialog)
-        logout_button.clicked.connect(self.handle_logout)
-
-    def apply_theme(self, theme):
-        """Apply theme colors to this window"""
-        colors = theme_manager.get_theme_colors(theme)
-        self.setStyleSheet(f"background-color: {colors['background']}; color: {colors['text']};")
+        self.add_button.clicked.connect(self.open_add_dialog)
+        self.logout_button.clicked.connect(self.handle_logout)
+        
+        # Apply initial theme after all widgets are created
+        theme_manager.apply_theme_to_window(self, theme_manager.current_mode)
         
     def closeEvent(self, event):
         """Clean up when window is closed"""
@@ -102,6 +97,8 @@ class MainWindow(QMainWindow):
         login = LoginDialog()
         result = login.exec()
         if result == QDialog.DialogCode.Accepted:
+            # Reapply theme when showing window after login to ensure correct mode
+            theme_manager.apply_theme_to_window(self, theme_manager.current_mode)
             self.show()
             self.refresh_credentials()
         else:
@@ -122,6 +119,8 @@ class MainWindow(QMainWindow):
         app = QApplication.instance() or QApplication(sys.argv)
         window = MainWindow()
         window.center()
+        # Ensure theme is applied correctly when window is shown
+        theme_manager.apply_theme_to_window(window, theme_manager.current_mode)
         window.show()
         window.refresh_credentials()
         app.exec()

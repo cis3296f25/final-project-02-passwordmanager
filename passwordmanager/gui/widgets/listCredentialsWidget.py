@@ -54,7 +54,7 @@ class ListCredentialsWidget(QWidget):
         filter_icon = QIcon(QPixmap(Strings.FILTER_ICON_PATH))
         self.filter_button.setIcon(filter_icon)
         self.filter_button.setFixedWidth(40) 
-        self.filter_button.setStyleSheet(Strings.SMALL_BUTTON_STYLE)
+        self.filter_button.setStyleSheet(theme_manager.get_small_button_style())
 
         self.filter_menu = QMenu(self)
         for index, label in enumerate(sort_options):
@@ -63,18 +63,19 @@ class ListCredentialsWidget(QWidget):
                 lambda _, i=index: self.sort_dropdown.setCurrentIndex(i)
             )
         self.filter_button.clicked.connect(self.show_filter_menu)           
-        # Settings button
-        settings_button = QPushButton("")
-        settings_button.setToolTip("Settings")
-        settings_button.setStyleSheet(Strings.SMALL_BUTTON_STYLE)
+        
+        # Settings button - store as instance variable for theme updates
+        self.settings_button = QPushButton("")
+        self.settings_button.setToolTip("Settings")
+        self.settings_button.setStyleSheet(theme_manager.get_small_button_style())
         settings_icon = QIcon(QPixmap(Strings.SETTINGS_ICON_PATH)) 
-        settings_button.setIcon(settings_icon)
-        settings_button.setFixedWidth(40) 
-        settings_button.clicked.connect(self.open_settings_dialog)
+        self.settings_button.setIcon(settings_icon)
+        self.settings_button.setFixedWidth(40) 
+        self.settings_button.clicked.connect(self.open_settings_dialog)
 
         # Add buttons to top row
         top_row.addWidget(self.filter_button)
-        top_row.addWidget(settings_button)
+        top_row.addWidget(self.settings_button)
         
         # Set margins to match credential cards layout
         top_row.setContentsMargins(10, 0, 10, 0)
@@ -97,7 +98,8 @@ class ListCredentialsWidget(QWidget):
 
         self.parentWidget = parent
         
-        theme_manager.apply_theme_to_window(self, theme_manager.current_theme)
+        # Apply theme with current mode (not theme parameter)
+        theme_manager.apply_theme_to_window(self, theme_manager.current_mode)
 
     def load_credentials(self):
         """Fetch all credentials from the API and rebuild the list with current filters/sort."""
@@ -218,8 +220,8 @@ class ListCredentialsWidget(QWidget):
         delete_button.setIcon(delete_icon)
 
         # styling
-        edit_button.setStyleSheet(Strings.SMALL_BUTTON_STYLE)
-        delete_button.setStyleSheet(Strings.DELETE_BUTTON_STYLE)
+        edit_button.setStyleSheet(theme_manager.get_small_button_style())
+        delete_button.setStyleSheet(theme_manager.get_delete_button_style())
         # show_button.setStyleSheet(Strings.SMALL_BUTTON_STYLE)
         
         # Set fixed height for all buttons to ensure consistency

@@ -46,7 +46,7 @@ class EditCredentialsDialog(QDialog):
         self.generate_button = QPushButton("Generate Password")
         self.save_button = QPushButton("Save")
 
-        button_style = Strings.LARGE_BUTTON_STYLE
+        button_style = theme_manager.get_large_button_style()
         self.cancel_button.setStyleSheet(button_style)
         self.generate_button.setStyleSheet(button_style)
         self.save_button.setStyleSheet(button_style)
