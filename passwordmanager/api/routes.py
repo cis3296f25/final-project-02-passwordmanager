@@ -3,6 +3,7 @@ from flask import Flask, request, jsonify
 from cryptography.fernet import Fernet
 import secrets
 import os
+import time
 
 from passwordmanager.core.passwordManager import conn, c
 from passwordmanager.core.kdf import default_kdf_params, derive_wrap_key
@@ -24,7 +25,10 @@ app.debug = False
 # Global variables for the vault and current user
 vault_locked = True
 current_user = None
+current_vmk = None
 current_vmk_cipher = None
+
+import passwordmanager.core.secure_cleanup
 
 # POST methods ###########################################################################
 @app.route("/lock", methods=["POST"])
@@ -141,8 +145,7 @@ def import_credentials():
         return jsonify({"error": "missing required columns", "details": parse_errors}), 400
 
     # Duplicate policy from query param
-    allow_param = (request.args.get("allow_duplicates") or "").strip().lower()
-    allow_duplicates = allow_param in ("1", "true", "yes", "y")
+    allow_duplicates = request.args.get("allow_duplicates", "").strip().lower() == "true"
 
     # If not allowing duplicates, pre-filter duplicates and count as skipped
     skipped = 0
@@ -151,10 +154,6 @@ def import_credentials():
         for it in items:
             site = (it.get("site") or "").strip()
             username = (it.get("username") or "").strip()
-            if not site or not username:
-                # will be counted as error by import_items; keep it to propagate
-                items_to_insert.append(it)
-                continue
             c.execute("SELECT 1 FROM credentials WHERE site = ? AND username = ?", (site, username))
             if c.fetchone():
                 skipped += 1
@@ -286,12 +285,26 @@ def account_login():
     if not username or not master_password:
         return jsonify({"error": "incorrect credentials"}), 401
 
+    current_time = time.time()
+    
+    c.execute(
+        "SELECT failed_attempts, lockout_until_timestamp FROM login_lockout WHERE id = 1"
+    )
+    lockout_row = c.fetchone()
+    
+    if lockout_row:
+        failed_attempts, lockout_until = lockout_row
+        if lockout_until is not None and current_time < lockout_until:
+            remaining_seconds = int(lockout_until - current_time)
+            return jsonify({"error": "login locked", "lockout_seconds": remaining_seconds}), 423
+    
     c.execute(
         "SELECT wrapped_vmk, salt, kdf, kdf_params FROM user_metadata WHERE username = ?",
         (username,),
     )
     row = c.fetchone()
     if not row:
+        _record_failed_attempt()
         return jsonify({"error": "incorrect credentials"}), 401
 
     wrapped_vmk, salt, kdf_name, kdf_params_json = row
@@ -300,8 +313,10 @@ def account_login():
         wrap_key = derive_wrap_key(master_password, salt, params)
         vmk = unwrap_vmk(wrap_key, wrapped_vmk)
     except Exception:
+        _record_failed_attempt()
         return jsonify({"error": "incorrect credentials"}), 401
 
+    _reset_lockout()
     global vault_locked, current_user, current_vmk, current_vmk_cipher
     vault_locked = False
     current_user = username
@@ -313,6 +328,64 @@ def account_login():
 @app.route("/account/logout", methods=["POST"])
 def account_logout():
     return lock_vault()
+
+@app.route("/account/lockout-status", methods=["GET"])
+def account_lockout_status():
+    current_time = time.time()
+    c.execute(
+        "SELECT lockout_until_timestamp FROM login_lockout WHERE id = 1"
+    )
+    lockout_row = c.fetchone()
+    
+    if not lockout_row or lockout_row[0] is None:
+        return jsonify({"locked": False, "lockout_seconds": 0})
+    
+    lockout_until = lockout_row[0]
+    if current_time >= lockout_until:
+        return jsonify({"locked": False, "lockout_seconds": 0})
+    
+    remaining_seconds = int(lockout_until - current_time)
+    return jsonify({"locked": True, "lockout_seconds": remaining_seconds})
+
+def _record_failed_attempt():
+    current_time = time.time()
+    c.execute(
+        "SELECT failed_attempts, lockout_until_timestamp FROM login_lockout WHERE id = 1"
+    )
+    row = c.fetchone()
+    
+    if row:
+        failed_attempts, lockout_until = row
+        if lockout_until is not None and current_time < lockout_until:
+            return
+        
+        failed_attempts = (failed_attempts or 0) + 1
+    else:
+        failed_attempts = 1
+    
+    if failed_attempts >= 3:
+        base_lockout = 15
+        lockout_multiplier = 2 ** (failed_attempts - 3)
+        lockout_duration = base_lockout * lockout_multiplier
+        lockout_until = current_time + lockout_duration
+    else:
+        lockout_until = None
+    
+    c.execute(
+        """
+        INSERT INTO login_lockout (id, failed_attempts, lockout_until_timestamp)
+        VALUES (1, ?, ?)
+        ON CONFLICT(id) DO UPDATE SET
+            failed_attempts = ?,
+            lockout_until_timestamp = ?
+        """,
+        (failed_attempts, lockout_until, failed_attempts, lockout_until),
+    )
+    conn.commit()
+
+def _reset_lockout():
+    c.execute("DELETE FROM login_lockout WHERE id = 1")
+    conn.commit()
 
 # changes a users master password assuming they're already logged in.
 #

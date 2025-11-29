@@ -32,6 +32,15 @@ CREATE TABLE IF NOT EXISTS user_metadata (
     kdf_params TEXT NOT NULL
 )
 """)
+c.execute("PRAGMA table_info(login_lockout)")
+cols = [row[1] for row in c.fetchall()]
+c.execute("""
+CREATE TABLE IF NOT EXISTS login_lockout (
+    id INTEGER PRIMARY KEY CHECK (id = 1),
+    failed_attempts INTEGER NOT NULL DEFAULT 0,
+    lockout_until_timestamp REAL
+)
+""")
 conn.commit()
 ###################################################################################
 

@@ -94,3 +94,7 @@ def check_duplicate_credential(site, username):
         "username": username
     })
     return response.json()
+
+def account_lockout_status():
+    response = requests.get(f"{BASE_URL}/account/lockout-status")
+    return response.json()
