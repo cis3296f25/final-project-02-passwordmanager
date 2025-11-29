@@ -43,6 +43,10 @@ exe = EXE(
     upx=False,                  
     console=False,
     windowed=True,               
-    onefile=True,              
-    runtime_tmpdir=None,         
+    runtime_tmpdir=None, 
+)
+app = BUNDLE(
+    exe,
+    name='PasswordManager.app',
+    icon=os.path.join(os.getcwd(), "resources/images/appIcon.icns")
 )
