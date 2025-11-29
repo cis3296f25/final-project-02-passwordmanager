@@ -14,6 +14,7 @@ a = Analysis(
     binaries=argon2_binaries + cffi_binaries + pyqt6_binaries + cryptography_binaries + flask_binaries,
     datas=[
         ('resources/images', 'resources/images'),
+        ('passwordmanager/themes', 'passwordmanager/themes'),
     ] + argon2_datas + cffi_datas + pyqt6_datas + cryptography_datas + flask_datas,
     hiddenimports=[
         'argon2',
