@@ -224,3 +224,9 @@ class TestApiCallerMethods(unittest.TestCase):
         for cred in creds:
             if cred.get("site") == site and cred.get("username") == username:
                 acm.delete_credential(cred.get("id"))
+    
+    def test_account_lockout_status(self):
+        result = acm.account_lockout_status()
+        self.assertIsInstance(result, dict)
+        self.assertIn("locked", result)
+        self.assertIn("lockout_seconds", result)

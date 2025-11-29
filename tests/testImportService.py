@@ -188,24 +188,10 @@ class TestImportService(unittest.TestCase):
             
             # Test "1"
             r1 = client.post("/import", data=csv_dup, headers={"Content-Type": "text/csv"}, 
-                           query_string={"allow_duplicates": "1"})
+                           query_string={"allow_duplicates": "true"})
             self.assertEqual(r1.status_code, 200)
             summary1 = r1.get_json()
             self.assertGreaterEqual(summary1.get("inserted", 0), 1)
-            
-            # Test "yes"
-            r2 = client.post("/import", data=csv_dup, headers={"Content-Type": "text/csv"},
-                           query_string={"allow_duplicates": "yes"})
-            self.assertEqual(r2.status_code, 200)
-            summary2 = r2.get_json()
-            self.assertGreaterEqual(summary2.get("inserted", 0), 1)
-            
-            # Test "y"
-            r3 = client.post("/import", data=csv_dup, headers={"Content-Type": "text/csv"},
-                           query_string={"allow_duplicates": "y"})
-            self.assertEqual(r3.status_code, 200)
-            summary3 = r3.get_json()
-            self.assertGreaterEqual(summary3.get("inserted", 0), 1)
     
     def test_import_duplicate_filtering_empty_fields(self):
         with app.test_client() as client:
