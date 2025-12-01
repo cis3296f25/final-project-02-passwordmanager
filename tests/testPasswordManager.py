@@ -27,6 +27,7 @@ class TestVaultAPI(unittest.TestCase):
 
     def tearDown(self):
         c.execute("DELETE FROM credentials WHERE site LIKE 'unittest-%'")
+        c.execute("DELETE FROM login_lockout WHERE id = 1")
         conn.commit()
 
     def test_add_get_delete_roundtrip(self):
@@ -190,6 +191,8 @@ class TestVaultAPI(unittest.TestCase):
         # wrong password should return 401
         r = self.client.post("/account/login", json={"username": "unittest-login", "master_password": "bad"})
         self.assertEqual(r.status_code, 401)
+        c.execute("DELETE FROM login_lockout WHERE id = 1")
+        conn.commit()
 
         # lock first, then correct login should unlock and return 200
         self.client.post("/lock")
@@ -422,7 +425,3 @@ class TestVaultAPI(unittest.TestCase):
         match = next((i for i in creds if i.get("site") == site and i.get("username") == username), None)
         if match:
             self.client.delete(f"/delete/{match.get('id')}")
-
-if __name__ == "__main__":
-    import unittest
-    unittest.main(verbosity=2)
