@@ -1,6 +1,7 @@
 from PyQt6.QtWidgets import (
     QApplication, QPushButton, QWidget, QVBoxLayout, QLabel,
-    QHBoxLayout, QScrollArea, QLineEdit, QComboBox, QMenu
+    QHBoxLayout, QScrollArea, QLineEdit, QComboBox, QMenu,
+    QMessageBox
 )
 from PyQt6.QtGui import QFont, QClipboard, QIcon, QPixmap, QCursor
 from PyQt6.QtCore import Qt 
@@ -298,8 +299,16 @@ class ListCredentialsWidget(QWidget):
         QApplication.clipboard().setText(password)
 
     def delete_credential(self, id):
-        apiCallerMethods.delete_credential(id)
-        self.load_credentials()
+        reply = QMessageBox.question(
+            self,
+            "Confirm deletion",
+            "Are you sure you want to delete this credential? This cannot be undone.",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No # no is the default
+        )
+        if reply == QMessageBox.StandardButton.Yes:
+            apiCallerMethods.delete_credential(id)
+            self.load_credentials()
 
     def edit_credential(self, id):
         overlay = QWidget(self.parentWidget)
