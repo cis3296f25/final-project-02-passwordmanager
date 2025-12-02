@@ -1,10 +1,11 @@
 from PyQt6.QtWidgets import (
+    QApplication,
     QPushButton, QVBoxLayout, QLabel,
     QDialog, QLineEdit, QFormLayout, QHBoxLayout, QWidget,
     QFileDialog, QMessageBox, QRadioButton, QButtonGroup, QComboBox, QSlider
 )
 from PyQt6.QtGui import QFont, QIcon
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, QSettings
 from passwordmanager.api import apiCallerMethods
 from passwordmanager.utils.theme_manager import theme_manager
 from resources.colors import Colors
@@ -23,9 +24,16 @@ class settingsDialog(QDialog):
         # Store parent reference for theme propagation & font scaling
         self.parent_window = parent
 
-        # Base font size for "100%" display scale
-        base_widget = self.parent_window if self.parent_window is not None else self
-        self.base_point_size = base_widget.font().pointSizeF() or 11.0
+         # Shared base font size (for "Medium" text) – constant so scaling isn't cumulative
+        if not hasattr(theme_manager, "base_point_size"):
+            # Use app default only once; keep it constant afterwards
+            app = QApplication.instance()
+            base_font = app.font() if app is not None else self.font()
+            theme_manager.base_point_size = base_font.pointSizeF() or 11.0
+        self.base_point_size = theme_manager.base_point_size
+
+        # Settings for persisting text size between sessions
+        self.settings = QSettings("OfflinePasswordManager", "OfflinePasswordManager")
 
         # Current mode and theme state from theme manager
         self.current_mode = theme_manager.current_mode
@@ -79,36 +87,53 @@ class settingsDialog(QDialog):
 
         form_layout.addRow("Themes:", themes_layout)
 
-        # Display Size Section
+        # Display Size Section (Small / Medium / Large on a 3-step slider)
         display_layout = QHBoxLayout()
 
-        # Small "A" label
+        # Preview "A" labels
         self.display_small_label = QLabel("A")
+        self.display_large_label = QLabel("A")
+
         small_font = QFont(self.display_small_label.font())
-        small_font.setPointSizeF(self.base_point_size * 0.8)
+        small_font.setPointSizeF(self.base_point_size * 0.9)
         self.display_small_label.setFont(small_font)
 
-        # Slider: 80% – 140% of base size
-        self.display_slider = QSlider(Qt.Orientation.Horizontal)
-        self.display_slider.setMinimum(80)
-        self.display_slider.setMaximum(140)
-        self.display_slider.setSingleStep(5)
-        self.display_slider.setPageStep(10)
-        self.display_slider.setValue(100)  # 100% default
-        self.display_slider.setTickPosition(QSlider.TickPosition.NoTicks)
-        self.display_slider.valueChanged.connect(self.on_display_size_changed)
-
-        # Large "A" label
-        self.display_large_label = QLabel("A")
         large_font = QFont(self.display_large_label.font())
-        large_font.setPointSizeF(self.base_point_size * 1.3)
+        large_font.setPointSizeF(self.base_point_size * 1.4)
         self.display_large_label.setFont(large_font)
+
+        # Slider with 3 discrete positions: 0 = Small, 1 = Medium, 2 = Large
+        self.display_slider = QSlider(Qt.Orientation.Horizontal)
+        self.display_slider.setMinimum(0)
+        self.display_slider.setMaximum(2)
+        self.display_slider.setTickInterval(1)
+        self.display_slider.setSingleStep(1)
+        self.display_slider.setPageStep(1)
+        self.display_slider.setTickPosition(QSlider.TickPosition.TicksBelow)
+
+        # Map slider positions → scale factors
+        self.display_scales = {
+            0: 0.9,   # Small
+            1: 1.15,   # Medium 
+            2: 1.40    # Large 
+        }
+
+        # Load saved index (default: Medium)
+        saved_index = self.settings.value("display_index", 1, type=int)
+        if saved_index not in self.display_scales:
+            saved_index = 1
+        self.display_slider.setValue(saved_index)
+        self.display_slider.valueChanged.connect(self.on_display_size_changed)
 
         display_layout.addWidget(self.display_small_label)
         display_layout.addWidget(self.display_slider)
         display_layout.addWidget(self.display_large_label)
 
-        form_layout.addRow("Display size:", display_layout)
+        form_layout.addRow("Text size:", display_layout)
+
+        # Remember so we can apply once after layout is built
+        self._initial_display_index = saved_index
+
 
         # Password Section
         self.change_password_button = QPushButton("Change Password")
@@ -159,6 +184,9 @@ class settingsDialog(QDialog):
         theme_manager.apply_theme_to_window(self, theme_manager.current_mode)
         self.update_theme_buttons()
         self.update_button_theme()
+
+        # Apply persisted text size once when dialog opens
+        self.on_display_size_changed(self._initial_display_index)
 
     # Theme + Mode Buttons
     def update_theme_buttons(self):
@@ -299,14 +327,27 @@ class settingsDialog(QDialog):
             self.export_csv_radio.setStyleSheet(radio_style)
 
     # Display Size Handling
-    def on_display_size_changed(self, value: int):
+    def on_display_size_changed(self, index: int):
         """
-        Slider is 80–140. Treat as percentage of base_point_size.
-        Apply new font size immediately to the main window and settings dialog.
+        Slider has 3 positions (0,1,2). Map to fixed scale factors and
+        apply relative to a constant base font size so it never "keeps growing".
         """
-        scale = value / 100.0
+        scale = self.display_scales.get(index, 1.0)
         target_size = max(8.0, self.base_point_size * scale)
+
+        # Save globally so other widgets can read the display scale
+        theme_manager.display_scale = scale
+
         self.apply_font_size(target_size)
+
+        # Persist to settings for next sessions
+        self.settings.setValue("display_index", index)
+        self.settings.setValue("display_scale", scale)
+
+        # Refresh main credential list so cards/buttons can resize
+        if self.parent_window is not None and hasattr(self.parent_window, "refresh_credentials"):
+            self.parent_window.refresh_credentials()
+
 
     def apply_font_size(self, point_size: float):
         def _apply_to_widget(widget: QWidget):

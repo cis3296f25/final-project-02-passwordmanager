@@ -3,7 +3,7 @@ from PyQt6.QtWidgets import (
     QHBoxLayout, QScrollArea, QLineEdit, QComboBox, QMenu
 )
 from PyQt6.QtGui import QFont, QClipboard, QIcon, QPixmap, QCursor
-from PyQt6.QtCore import Qt 
+from PyQt6.QtCore import Qt, QSettings
 import sys
 from passwordmanager.api import apiCallerMethods
 from passwordmanager.utils.theme_manager import theme_manager
@@ -12,7 +12,11 @@ from resources.strings import Strings
 from passwordmanager.gui.widgets.editCredentialsDialog import EditCredentialsDialog
 from passwordmanager.gui.settingsDialog import settingsDialog
 
-button_height = 32
+# Base sizes before applying display scale
+BASE_CARD_HEIGHT = 45
+BASE_BUTTON_HEIGHT = 32
+BASE_BUTTON_WIDTH = 30
+
 
 class ListCredentialsWidget(QWidget):
     def __init__(self, parent=None):
@@ -29,7 +33,7 @@ class ListCredentialsWidget(QWidget):
         # Top row icons: search bar + filter button
         top_row = QHBoxLayout()
         
-        #search bar
+        # search bar
         self.search_bar = QLineEdit()
         self.search_bar.setPlaceholderText("Search")
         self.search_bar.textChanged.connect(self.filter_credentials)
@@ -45,7 +49,6 @@ class ListCredentialsWidget(QWidget):
         ]
         self.sort_dropdown.addItems(sort_options)
         self.sort_dropdown.currentIndexChanged.connect(self.apply_filters)
-        
         # NOTE: we do NOT add self.sort_dropdown to any layout
 
         # filter button that opens a dropdown menu
@@ -189,32 +192,50 @@ class ListCredentialsWidget(QWidget):
     def add_credential_card(self, cred):
         colors = theme_manager.get_theme_colors()
         
+        # Prefer global display_scale set by settingsDialog / main_window
+        scale = getattr(theme_manager, "display_scale", None)
+        if scale is None:
+            # Fallback to persisted setting if global not set for some reason
+            settings = QSettings("OfflinePasswordManager", "OfflinePasswordManager")
+            scale = settings.value("display_scale", 1.0, type=float)
+
+        # Clamp to reasonable range
+        scale = max(0.85, min(scale, 1.4))
+
+        # Compute scaled sizes
+        card_height = int(BASE_CARD_HEIGHT * scale)
+        btn_height = int(BASE_BUTTON_HEIGHT * scale)
+        btn_width = int(BASE_BUTTON_WIDTH * scale)
+
+        # font sizes for password bullets (site/username will use global font scale)
+        base_password_size = 14
+        password_size = int(base_password_size * scale)
+
         card = QWidget()
-        card.setFixedHeight(45)
+        card.setFixedHeight(card_height)
         card_layout = QHBoxLayout(card)
         card_layout.setContentsMargins(10, 5, 10, 5)
 
         # actual password text
         password_text = cred.get("password", "")
 
-        # display for website, username, ••••••••
+        # display for website, username
         site = QLabel(f"{cred['site']}")
-        site.setObjectName("site_label") # set obj name for searching
+        site.setObjectName("site_label")  # set obj name for searching
         username = QLabel(f"{cred['username']}")
-        username.setObjectName("username_label") # set obj name for searching
+        username.setObjectName("username_label")  # set obj name for searching
 
-
-        site.setStyleSheet(f"color: {colors['text']}; font-size: 12px;")
-        username.setStyleSheet(f"color: {colors['text']}; font-size: 12px;")
+        # Let global font scaling control size; only set color here
+        site.setStyleSheet(f"color: {colors['text']};")
+        username.setStyleSheet(f"color: {colors['text']};")
 
         # buttons (really should refactor this later) ##########################################
         edit_button = QPushButton()
         delete_button = QPushButton()
-        # show_button = QPushButton("👁")  # show/hide password toggle
 
         # button icons
-        edit_icon = QIcon(QPixmap(Strings.EDIT_ICON_PATH)) 
-        delete_icon = QIcon(QPixmap(Strings.DELETE_ICON_PATH)) 
+        edit_icon = QIcon(QPixmap(Strings.EDIT_ICON_PATH))
+        delete_icon = QIcon(QPixmap(Strings.DELETE_ICON_PATH))
 
         edit_button.setIcon(edit_icon)
         delete_button.setIcon(delete_icon)
@@ -222,65 +243,42 @@ class ListCredentialsWidget(QWidget):
         # styling
         edit_button.setStyleSheet(theme_manager.get_small_button_style())
         delete_button.setStyleSheet(theme_manager.get_delete_button_style())
-        # show_button.setStyleSheet(Strings.SMALL_BUTTON_STYLE)
-        
-        # Set fixed height for all buttons to ensure consistency
-        edit_button.setFixedHeight(button_height)
-        delete_button.setFixedHeight(button_height)
-        edit_button.setFixedWidth(30) 
-        delete_button.setFixedWidth(30)
-        # show_button.setFixedHeight(button_height)
 
-        
+        # Set fixed size for action buttons based on scale
+        edit_button.setFixedHeight(btn_height)
+        delete_button.setFixedHeight(btn_height)
+        edit_button.setFixedWidth(btn_width)
+        delete_button.setFixedWidth(btn_width)
+
         edit_button.clicked.connect(lambda _, id=cred['id']: self.edit_credential(id))
         delete_button.clicked.connect(lambda _, id=cred['id']: self.delete_credential(id))
 
-        # per-row visibility state
-        is_visible = {"value": False}
-
-        # COMMENTED OUT: because it will be in the drop down menu instead
-        
-        # def toggle_password():
-        #     if is_visible["value"]:
-        #         # hide password - always show 12 dots to hide length
-        #         password_label.setText("•" * 12)
-        #         show_button.setText("👁")
-        #         is_visible["value"] = False
-        #     else:
-        #         # show password
-        #         password_label.setText(password_text)
-        #         show_button.setText("🙈")
-        #         is_visible["value"] = True
-
-        # show_button.clicked.connect(toggle_password)
-
         button_layout = QHBoxLayout()
-        # button_layout.addWidget(show_button)
         button_layout.addWidget(edit_button)
         button_layout.addWidget(delete_button)
         ###########################################################################################
 
+        # Password copy "button" – show bullets but scale font
         password_copy_button = QPushButton("••••••••••••")
         password_copy_button.setToolTip("Copy password")
-        # copy password to clipboard
         password_copy_button.clicked.connect(
             lambda _, p=password_text: self.copy_to_clipboard(p, password_copy_button)
         )
+        password_copy_button.setFixedHeight(btn_height)
         password_copy_button.setStyleSheet(f"""
-            QPushButton{{
-            color: {colors['text']};
+            QPushButton {{
+                color: {colors['text']};
+                font-size: {password_size}px;
             }}
             QPushButton:hover {{
-            background-color: {colors['pressed_card_bg']};
-            color: {colors['text']};
+                background-color: {colors['pressed_card_bg']};
+                color: {colors['text']};
             }}
             QPushButton:pressed {{
                 border: 2px solid {colors['card_bg']};
             }}
-            QToolTip {{            
-            }}
-            """)
-        
+        """)
+
         card_layout.addWidget(site)
         card_layout.addWidget(username)
         card_layout.addWidget(password_copy_button)
