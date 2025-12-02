@@ -1,5 +1,13 @@
-# Offline Password Manager
-A local password manager that lets you securely store and retrieve your account passwords. Each password is encrypted with a master key before being saved in a local SQLite database, so it is protected even if someone accesses your files. The program can generate strong random passwords for new accounts, and you can add or get credentials through a simple local API. Everything runs on your computer without needing an internet connection. 
+
+<h1 align="center"> Offline Password Manager</h1>
+<p align="center">
+ <i>A local password manager that lets you securely store and retrieve your account passwords.</i>
+ <br/><br/>
+<img height="130" alt="icon" src="https://github.com/user-attachments/assets/0638130e-4c50-4cab-932c-7f2fc338daad" />
+</p>
+
+# Overview
+Each password is encrypted with a master key before being saved in a local SQLite database, so it is protected even if someone accesses your files. The program can generate strong random passwords for new accounts, and you can add or get credentials through a simple local API. Everything runs on your computer without needing an internet connection. 
 
 # How to run
 ## To run the latest release
