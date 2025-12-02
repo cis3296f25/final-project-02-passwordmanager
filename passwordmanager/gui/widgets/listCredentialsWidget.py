@@ -302,7 +302,7 @@ class ListCredentialsWidget(QWidget):
         reply = QMessageBox.question(
             self,
             "Confirm deletion",
-            "Are you sure you cannot to delete this credential? This cannot be undone.",
+            "Are you sure you want to delete this credential? This cannot be undone.",
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
             QMessageBox.StandardButton.No # no is the default
         )
