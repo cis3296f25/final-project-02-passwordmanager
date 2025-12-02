@@ -6,10 +6,6 @@ A local password manager that lets you securely store and retrieve your account 
 1. Go to the 'Releases' page to the right
 2. Select the release compatible with your Operating System
 
-### For Mac:
-The project must be built from source using the instruction below.
-
-
 ## How To Build: To Run From The Source Code
 - Download the latest binary from the Release section on the right on GitHub.  
 - On the command line start virtual environment:
