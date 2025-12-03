@@ -1,6 +1,7 @@
 import sqlite3
 import os
 import sys
+import datetime
 
 # Database stuff #################################
 DB_FILENAME = "vault.db"
@@ -12,15 +13,24 @@ def get_base_path():
         app_path = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     return app_path
 
+# Configure SQLite to return datetime objects from DATETIME columns
+def convert_datetime(val):
+    if isinstance(val, bytes):
+        return datetime.datetime.fromisoformat(val.decode())
+    return datetime.datetime.fromisoformat(val)
+
+sqlite3.register_converter("datetime", convert_datetime)
+
 db_path = os.path.join(get_base_path(), DB_FILENAME)
-conn = sqlite3.connect(db_path, check_same_thread=False)
+conn = sqlite3.connect(db_path, check_same_thread=False, detect_types=sqlite3.PARSE_DECLTYPES)
 c = conn.cursor()
 c.execute("""
 CREATE TABLE IF NOT EXISTS credentials (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     site TEXT,
     username TEXT,
-    password BLOB
+    password BLOB,
+    created_at DATETIME
 )
 """)
 c.execute("""
@@ -30,6 +40,15 @@ CREATE TABLE IF NOT EXISTS user_metadata (
     salt BLOB NOT NULL,
     kdf TEXT NOT NULL,
     kdf_params TEXT NOT NULL
+)
+""")
+c.execute("PRAGMA table_info(login_lockout)")
+cols = [row[1] for row in c.fetchall()]
+c.execute("""
+CREATE TABLE IF NOT EXISTS login_lockout (
+    id INTEGER PRIMARY KEY CHECK (id = 1),
+    failed_attempts INTEGER NOT NULL DEFAULT 0,
+    lockout_until_timestamp REAL
 )
 """)
 conn.commit()
@@ -58,4 +77,12 @@ def ensure_credentials_id_column():
         c.execute("ALTER TABLE credentials_new RENAME TO credentials")
         conn.commit()
 
+def ensure_credentials_created_at_column():
+    c.execute("PRAGMA table_info(credentials)")
+    cols = [row[1] for row in c.fetchall()]
+    if "created_at" not in cols:
+        c.execute("ALTER TABLE credentials ADD COLUMN created_at DATETIME")
+        conn.commit()
+
 ensure_credentials_id_column()
+ensure_credentials_created_at_column()

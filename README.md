@@ -1,14 +1,18 @@
-# Offline Password Manager
-A local password manager that lets you securely store and retrieve your account passwords. Each password is encrypted with a master key before being saved in a local SQLite database, so it is protected even if someone accesses your files. The program can generate strong random passwords for new accounts, and you can add or get credentials through a simple local API. Everything runs on your computer without needing an internet connection. 
+
+<h1 align="center"> Offline Password Manager</h1>
+<p align="center">
+ <i>A local password manager that lets you securely store and retrieve your account passwords.</i>
+ <br/><br/>
+<img height="130" alt="icon" src="https://github.com/user-attachments/assets/0638130e-4c50-4cab-932c-7f2fc338daad" />
+</p>
+
+# Overview
+Each password is encrypted with a master key before being saved in a local SQLite database, so it is protected even if someone accesses your files. The program can generate strong random passwords for new accounts, and you can add or get credentials through a simple local API. Everything runs on your computer without needing an internet connection. 
 
 # How to run
 ## To run the latest release
 1. Go to the 'Releases' page to the right
 2. Select the release compatible with your Operating System
-
-### For Mac:
-The project must be built from source using the instruction below.
-
 
 ## How To Build: To Run From The Source Code
 - Download the latest binary from the Release section on the right on GitHub.  
@@ -32,12 +36,27 @@ python3 main.py
 ```
 
 # Usage Overview
-## Account Creation: TODO
-## Login: TODO
-## Adding a Password to the Vault: TODO (include sort/filter/search)
-## Delete and Edit: TODO
-## Changing the Master Password: TODO
-## All Other User-Configurable Settings: TODO
+## Account Creation
+Enter a username and master password, then click "Create Account". You will be asked to confirm the password, and once confirmed you will be logged in.
+
+## Login
+Enter your username and master password, then click "Login". After 3 failed attempts, login will be temporarily locked.
+
+## Adding a Password to the Vault
+Click the "Add" button, fill in the site, username, and password fields. You can generate a strong password using the "Generate Password" button. The dialog shows password strength feedback. Click "Save Credential" to store it. Use the search bar to find credentials, and the filter button to sort by date or site name (A–Z or Z–A).
+
+## Delete and Edit
+Each credential card displays edit and delete buttons. Click edit to modify site, username, or password. Click delete to remove a credential from the vault.
+
+## Changing the Master Password
+Open Settings (gear icon), then click "Change Password". Enter your old password and new password, then click "Submit".
+
+## All Other User-Configurable Settings
+Open Settings (gear icon) to access:
+- **Themes**: Choose color palette (Default, Red, Green, Blue, Purple) and light/dark mode
+- **Export**: Export credentials as JSON or CSV (plaintext warning shown)
+- **Import**: Import credentials from a CSV file with headers: site, username, password
+
 ## Export/Import
 - Export:
   - Via Settings > Export: choose JSON (default) or CSV. Confirms plaintext risk, then saves locally.
@@ -49,7 +68,12 @@ python3 main.py
   - API: POST /import with text or csv body.
   - Skips duplicates (site+username). Shows inserted/skipped/errors.
 - Note: Files contain plaintext passwords. Store securely and delete when done
-## Logout: TODO
+
+## Logout
+Click the "Logout" button in the main window. This locks the vault and returns you to the login screen.
+
+## Running the App Portably via USB:
+Place the executable **and** database file (`vault.db`) in the same directory on a USB. You'll be able to run the program and access all your passwords on any device by running the app from the USB on that device, without storing any information on that device.
 
 # Component Diagram
 ```mermaid
@@ -76,6 +100,7 @@ graph TB
         PM[passwordManager<br/>Vault ops]
         CRYPTO[Encryption<br/>KDF, VMK]
         VALIDATE[Password Strength]
+        EXPORT[Export/Import<br/>Services]
     end
 
     subgraph "Storage"
@@ -85,6 +110,7 @@ graph TB
 
     subgraph "Resources"
         RES[Colors, Strings, Images]
+        THEME[Theme Manager]
     end
 
     MAIN --> API
@@ -94,20 +120,21 @@ graph TB
     MAINWIN --> LIST
     MAINWIN --> SETTINGS
 
-    MAINWIN --> CALLER
     DIALOGS --> CALLER
     LIST --> CALLER
     CALLER --> API
     API --> ROUTES
     ROUTES --> PM
     ROUTES --> VALIDATE
+    ROUTES --> EXPORT
     PM --> CRYPTO
     PM --> DB
+    EXPORT --> PM
 
     SETTINGS --> CONFIG
     MAINWIN --> RES
-    LOGIN --> RES
-    SETTINGS --> RES
+    MAINWIN --> THEME
+    THEME --> CONFIG
 
     classDef entry fill:#8ACE00,stroke:#6DA400,color:#000
     classDef gui fill:#5a9fff,stroke:#4a5f8f,color:#fff
@@ -119,9 +146,9 @@ graph TB
     class MAIN entry
     class LOGIN,MAINWIN,DIALOGS,LIST,SETTINGS gui
     class API,ROUTES,CALLER api
-    class PM,CRYPTO,VALIDATE core
+    class PM,CRYPTO,VALIDATE,EXPORT core
     class DB,CONFIG storage
-    class RES res
+    class RES,THEME res
 
 ```
 
