@@ -68,7 +68,7 @@ class EditCredentialsDialog(QDialog):
         self.save_button.clicked.connect(self.edit_credential)
         
         # Apply current theme
-        theme_manager.apply_theme_to_window(self, theme_manager.current_theme)
+        theme_manager.apply_theme_to_window(self, theme_manager.current_mode)
 
     def close_dialog(self):
         self.close()

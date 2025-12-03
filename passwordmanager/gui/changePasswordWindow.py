@@ -54,10 +54,13 @@ class ChangePasswordWindow(QDialog):
         
         self.setLayout(layout)
         
-        # Apply theme with current mode (not theme parameter)
+        # Apply theme with current mode
         theme_manager.apply_theme_to_window(self, theme_manager.current_mode)
-        
     
     def set_master_password(self):
         newPassword = self.new_password_input.text()
         apiCallerMethods.set_master_password(newPassword)
+    
+    def closeEvent(self, event):
+        theme_manager.unregister_window(self)
+        super().closeEvent(event)
