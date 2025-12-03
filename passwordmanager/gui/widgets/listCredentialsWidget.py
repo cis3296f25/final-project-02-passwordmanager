@@ -321,7 +321,16 @@ class ListCredentialsWidget(QWidget):
         expand_area.setMaximumHeight(0)  # collapsed initially
         expand_area.setMinimumHeight(0)
         expand_area.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
-        expand_area.setStyleSheet(f"background-color: transparent;")
+        # Include tooltip styling in expand_area so buttons inside inherit it
+        expand_area.setStyleSheet(f"""
+            background-color: transparent;
+            QToolTip {{
+                background-color: {colors['card_bg']};
+                color: {colors['text']};
+                border: 1px solid {colors['accent']};
+                padding: 4px;
+            }}
+        """)
         
         expand_layout = QHBoxLayout(expand_area)
         expand_layout.setContentsMargins(10, 8, 10, 12)
@@ -375,21 +384,21 @@ class ListCredentialsWidget(QWidget):
         date_label.setWordWrap(False)
         
         # Visual button to show/hide password (controls the password button in top row)
-        visual_button = QPushButton("\U0001F441")
+        visual_button = QPushButton("\U0001F441", self)
         visual_button.setFixedSize(btn_width, btn_height)
-        visual_button.setStyleSheet(theme_manager.get_small_button_style())
-        visual_button.setToolTip("Show password")
+        # Force tooltip styling directly on button - brute force fix for black rectangle
+        button_style = theme_manager.get_small_button_style()
+        tooltip_style = f"""
+            QToolTip {{
+                background-color: {colors['card_bg']};
+                color: {colors['text']};
+                border: 1px solid {colors['accent']};
+                padding: 4px;
+            }}
+        """
+        visual_button.setStyleSheet(button_style + tooltip_style)
         
         is_visible = {"state": False}
-        
-        # Store reference for "show all" feature
-        password_info = {
-            "button": visual_button,
-            "password_text": password_text,
-            "password_copy_button": password_copy_button,
-            "is_visible": is_visible
-        }
-        self.password_buttons.append(password_info)
         
         def toggle_visual():
             if is_visible["state"]:
@@ -407,6 +416,15 @@ class ListCredentialsWidget(QWidget):
         
         visual_button.clicked.connect(toggle_visual)
         
+        # Store reference for "show all" feature
+        password_info = {
+            "button": visual_button,
+            "password_text": password_text,
+            "password_copy_button": password_copy_button,
+            "is_visible": is_visible
+        }
+        self.password_buttons.append(password_info)
+        
         # Connect password button click to copy (now that it's in top row)
         password_copy_button.clicked.connect(
             lambda _, p=password_text: self.copy_to_clipboard(p, password_copy_button)
@@ -420,6 +438,7 @@ class ListCredentialsWidget(QWidget):
         expand_layout.addStretch()
         # Buttons aligned to the right
         expand_layout.addWidget(visual_button)
+        visual_button.setToolTip("Show password")
         expand_layout.addWidget(edit_button)
         expand_layout.addWidget(delete_button)
         
