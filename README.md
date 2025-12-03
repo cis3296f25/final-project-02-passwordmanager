@@ -154,6 +154,12 @@ graph TB
 
 This diagram shows how the password manager is built. The GUI (blue boxes) is what users see - login screen, main window, dialogs for adding/editing passwords. When you do something in the GUI, it sends HTTP requests through the API layer (red boxes) to the core logic (purple boxes), which handles encryption and saves everything to the database. Even though it's a desktop app, we use a REST API internally so the GUI doesn't have to know about encryption or databases - it just makes requests and gets responses back. The whole thing starts from main.py which fires up both the web server and the GUI.
 
+# Contributors
+<a href="https://github.com/cis3296f25/PasswordManager/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=cis3296f25/PasswordManager" />
+</a>
+
+Made with [contrib.rocks](https://contrib.rocks).
 
 # How to contribute
 Follow this project board to know the latest status of the project: [https://github.com/orgs/cis3296f25/projects/71]  
