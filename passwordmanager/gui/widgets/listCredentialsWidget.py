@@ -460,16 +460,46 @@ class ListCredentialsWidget(QWidget):
         QApplication.clipboard().setText(password)
 
     def delete_credential(self, id):
-        reply = QMessageBox.question(
-            self,
-            "Confirm deletion",
-            "Are you sure you want to delete this credential? This cannot be undone.",
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-            QMessageBox.StandardButton.No # no is the default
-        )
+        colors = theme_manager.get_theme_colors()
+
+        msg = QMessageBox(self)
+        msg.setWindowTitle("Confirm Deletion")
+        msg.setText("Are you sure you want to delete this credential?\nThis cannot be undone.")
+        msg.setIcon(QMessageBox.Icon.Question)
+
+        msg.setStandardButtons(QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+        msg.setDefaultButton(QMessageBox.StandardButton.No)
+
+        msg.setStyleSheet(f"""
+            QMessageBox {{
+                background-color: {colors['background']};
+            }}
+            QLabel {{
+                color: {colors['text']};
+                font-size: 13px;
+            }}
+            QPushButton {{
+                background-color: {colors['accent']};
+                color: {colors['text']};
+                border-radius: 5px;
+                padding: 5px 15px;
+                font-weight: bold;
+                border: none;
+            }}
+            QPushButton:hover {{
+                background-color: {colors['accent_hover']}; 
+            }}
+            QPushButton:pressed {{
+                background-color: {colors['accent_pressed']};
+            }}
+        """)
+
+        reply = msg.exec()
+
         if reply == QMessageBox.StandardButton.Yes:
             apiCallerMethods.delete_credential(id)
             self.load_credentials()
+
 
     def edit_credential(self, id):
         overlay = QWidget(self.parentWidget)
