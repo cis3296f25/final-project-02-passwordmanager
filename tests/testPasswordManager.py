@@ -5,6 +5,7 @@ import sqlite3
 import tempfile
 import os
 import sys
+import datetime
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
@@ -316,7 +317,7 @@ class TestVaultAPI(unittest.TestCase):
         self.assertIn("password", data)
         pw = data["password"]
         self.assertIsInstance(pw, str)
-        self.assertEqual(len(pw), 12)
+        self.assertEqual(len(pw), 16)
         allowed = set("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()")
         self.assertTrue(all(ch in allowed for ch in pw))
 
@@ -356,6 +357,44 @@ class TestVaultAPI(unittest.TestCase):
             os.remove(tmp_path)
             pm.conn = old_conn
             pm.c = old_c
+    
+    def test_ensure_credentials_created_at_column_migration(self):
+        # Trivial test to cover lines 84-85: ensure_credentials_created_at_column when column doesn't exist
+        old_conn = pm.conn
+        old_c = pm.c
+        try:
+            tmp_fd, tmp_path = tempfile.mkstemp(prefix="vault_test_", suffix=".db")
+            os.close(tmp_fd)
+            new_conn = sqlite3.connect(tmp_path, check_same_thread=False, detect_types=sqlite3.PARSE_DECLTYPES)
+            new_c = new_conn.cursor()
+            new_c.execute("""
+            CREATE TABLE IF NOT EXISTS credentials (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                site TEXT,
+                username TEXT,
+                password BLOB
+            )
+            """)
+            new_conn.commit()
+            
+            pm.conn = new_conn
+            pm.c = new_c
+            
+            pm.ensure_credentials_created_at_column()
+            
+            new_c.execute("PRAGMA table_info(credentials)")
+            cols = [row[1] for row in new_c.fetchall()]
+            self.assertIn("created_at", cols)
+        finally:
+            new_conn.close()
+            os.remove(tmp_path)
+            pm.conn = old_conn
+            pm.c = old_c
+    
+    def test_convert_datetime_string_path(self):
+        # Trivial test to cover line 20: convert_datetime with string (non-bytes) input
+        result = pm.convert_datetime("2024-01-15T10:30:00")
+        self.assertIsInstance(result, datetime.datetime)
             
     def test_db_path(self):
         self.assertIsNotNone(pm.db_path)

@@ -87,7 +87,8 @@ class AddCredentialsDialog(QDialog):
 
         # Connect password input to strength checker
         self.password_input.textChanged.connect(self.update_strength_label)
-        self.apply_theme(theme_manager.current_theme)
+        # Apply current theme
+        theme_manager.apply_theme_to_window(self, theme_manager.current_mode)
 
     def toggle_password_visibility(self, checked: bool):
         if checked:
@@ -168,31 +169,7 @@ class AddCredentialsDialog(QDialog):
         else:
             self.strength_label.setText("Password strength: Strong")
             self.strength_label.setStyleSheet("color: lightgreen;")
-             # Apply current theme
-        self.apply_theme(theme_manager.current_theme)
 
-    def apply_theme(self, theme):
-        colors = theme_manager.get_theme_colors(theme)
-        
-        # Apply to main dialog
-        self.setStyleSheet(f"""
-        QDialog {{
-            background-color: {colors['background']};
-            color: {colors['text']};
-        }}
-        QLabel {{
-            background-color: {colors['background']};
-            color: {colors['text']};
-        }}
-        QLineEdit {{
-            background-color: {colors['background-button']};
-            color: {colors['input_text']};
-            padding: 5px;
-            border-radius: 4px;
-        }}
-        
-        """)
-        
     def closeEvent(self, event):
         theme_manager.unregister_window(self)
         super().closeEvent(event)

@@ -3,6 +3,7 @@ from flask import Flask, request, jsonify
 from cryptography.fernet import Fernet
 import secrets
 import os
+import datetime
 import time
 
 from passwordmanager.core.passwordManager import conn, c
@@ -17,7 +18,6 @@ from passwordmanager.core.import_service import (
     parse_csv,
     import_items,
 )
-from datetime import datetime
 
 # Flask API
 app = Flask(__name__)
@@ -57,15 +57,21 @@ def add_credential():
 
     data = request.json
 
+    now = datetime.datetime.utcnow()
+
     encrypted_password = current_vmk_cipher.encrypt(data["password"].encode())
     c.execute(
-        "INSERT INTO credentials (site, username, password) VALUES (?, ?, ?)",
-        (data["site"], data["username"], encrypted_password)
+        "INSERT INTO credentials (site, username, password, created_at) VALUES (?, ?, ?, ?)", 
+        (data["site"], data["username"], encrypted_password, now)       
     )
     new_user_id = c.lastrowid
 
     conn.commit()
-    return jsonify({"status": "added", "id": new_user_id}), 201
+
+    # format created_at as MM-DD-YYYY for response
+    created_at_formatted = now.strftime("%m-%d-%Y")
+
+    return jsonify({"status": "added", "id": new_user_id, "created_at": created_at_formatted}), 201
 
 # GET methods ###########################################################################
 @app.route("/status", methods=["GET"])
@@ -81,17 +87,32 @@ def get_credential(cred_id):
     if current_vmk_cipher is None:
         return jsonify({"error": "Not logged in"}), 401
 
-    c.execute("SELECT site, username, password FROM credentials WHERE id = ?", (cred_id,))
+    c.execute("SELECT site, username, password, created_at FROM credentials WHERE id = ?", (cred_id,))
     row = c.fetchone()
     if row:
-        site, username, encrypted_password = row
+        site, username, encrypted_password, created_at = row
         password = current_vmk_cipher.decrypt(encrypted_password).decode()
-        return jsonify({"id": cred_id, "site": site, "username": username, "password": password}), 200
+
+        # Format created_at to MM-DD-YYYY
+        created_at_str = None
+        if isinstance(created_at, datetime.datetime):
+            created_at_str = created_at.strftime("%m-%d-%Y")
+        else:
+            parsed = datetime.datetime.fromisoformat(str(created_at))
+            created_at_str = parsed.strftime("%m-%d-%Y")
+
+        return jsonify({
+            "id": cred_id,
+            "site": site,
+            "username": username,
+            "password": password,
+            "created_at": created_at_str
+        }), 200
     return jsonify({"error": "not found"}), 404
 
 # Password generator
 @app.route("/get/generated-password", methods=["GET"])
-def generate_password(length=12):
+def generate_password(length=16):
     chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()"
     password = ''.join(secrets.choice(chars) for _ in range(length))
     return jsonify({"password": password})
@@ -110,14 +131,19 @@ def export_credentials():
 
     if fmt == "csv":
         csv_text = serialize_export_csv(items)
-        filename = f"passwords-{datetime.now().strftime('%Y%m%d-%H%M%S')}.csv"
+        filename = f"passwords-{datetime.datetime.now().strftime('%Y%m%d-%H%M%S')}.csv"
         resp = app.response_class(csv_text, mimetype="text/csv")
         resp.headers["Content-Disposition"] = f'attachment; filename="{filename}"'
         return resp
 
     # default JSON
-    json_text = serialize_export_json(items)
-    return app.response_class(json_text, mimetype="application/json")
+    from datetime import timezone
+    payload = {
+        "version": 1,
+        "exported_at": datetime.datetime.now(timezone.utc).isoformat(),
+        "items": items,
+    }
+    return jsonify(payload)
 
 # Import endpoint (CSV)
 @app.route("/import", methods=["POST"])
@@ -145,7 +171,8 @@ def import_credentials():
         return jsonify({"error": "missing required columns", "details": parse_errors}), 400
 
     # Duplicate policy from query param
-    allow_duplicates = request.args.get("allow_duplicates", "").strip().lower() == "true"
+    allow_param = (request.args.get("allow_duplicates") or "").strip().lower()
+    allow_duplicates = allow_param in ("1", "true", "yes", "y")
 
     # If not allowing duplicates, pre-filter duplicates and count as skipped
     skipped = 0
@@ -178,18 +205,33 @@ def list_credentials():
     if current_vmk_cipher is None:
         return jsonify({"error": "Not logged in"}), 401
     
-    # selects all columns
-    c.execute("SELECT id, site, username, password FROM credentials")
+    c.execute("SELECT id, site, username, password, created_at FROM credentials")
     rows = c.fetchall()
 
     credentials_list = []
-    for cred_id, site, username, encrypted_password in rows:
+    for cred_id, site, username, encrypted_password, created_at in rows:
         try:
-            # decrypt pw for display
             password = current_vmk_cipher.decrypt(encrypted_password).decode()
-            credentials_list.append({"id": cred_id, "site": site, "username": username, "password": password})
+
+            # normalize created_at to MM-DD-YYYY
+            created_at_str = None
+            if isinstance(created_at, datetime.datetime):
+                created_at_str = created_at.strftime("%m-%d-%Y")
+            else:
+                try:
+                    parsed = datetime.datetime.fromisoformat(str(created_at))
+                    created_at_str = parsed.strftime("%m-%d-%Y")
+                except Exception:
+                    created_at_str = str(created_at) if created_at else None
+
+            credentials_list.append({
+                "id": cred_id,
+                "site": site,
+                "username": username,
+                "password": password,
+                "created_at": created_at_str   
+            })
         except Exception:
-            # hide entries that are not decryptable by the current user
             continue
     return jsonify(credentials_list)
 
@@ -431,7 +473,7 @@ def change_master_password():
 
 @app.route("/check-duplicate", methods=["POST"])
 def check_duplicate():
-    
+
     global vault_locked
 
     if vault_locked:
@@ -453,4 +495,3 @@ def check_duplicate():
 if __name__ == "__main__":
     # Run server
     app.run(port=5000)
-

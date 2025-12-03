@@ -22,6 +22,12 @@ class TestSecureCleanup(unittest.TestCase):
         data = b"test_secret_data"
         zero_bytearray_in_memory(data)
         self.assertEqual(data, b"test_secret_data")
+    
+    def test_zero_bytearray_in_memory_with_string(self):
+        # test to cover branch: data is not None but not a bytearray
+        data = "not a bytearray"
+        zero_bytearray_in_memory(data)
+        self.assertEqual(data, "not a bytearray")
 
     def test_zero_bytearray_in_memory_with_empty(self):
         data = bytearray()
@@ -53,6 +59,17 @@ class TestSecureCleanup(unittest.TestCase):
             cleanup_secrets()
         finally:
             routes_module.current_vmk = original_vmk
+    
+    def test_cleanup_secrets_with_vmk_other_type(self):
+        # test to cover branch: current_vmk is not None but not bytearray or bytes
+        import passwordmanager.api.routes as routes_module
+        original_vmk = routes_module.current_vmk
+        
+        try:
+            routes_module.current_vmk = "not bytes or bytearray"
+            cleanup_secrets()
+        finally:
+            routes_module.current_vmk = original_vmk
 
     def test_cleanup_secrets_with_cipher(self):
         from cryptography.fernet import Fernet
@@ -63,6 +80,70 @@ class TestSecureCleanup(unittest.TestCase):
             import passwordmanager.api.routes as routes_module
             key = Fernet.generate_key()
             routes_module.current_vmk_cipher = Fernet(key)
+            cleanup_secrets()
+        finally:
+            routes_module.current_vmk_cipher = original_cipher
+    
+    def test_cleanup_secrets_with_cipher_no_signing_key(self):
+        # test to cover branch: hasattr returns False or _signing_key is None
+        from cryptography.fernet import Fernet
+        import passwordmanager.api.routes as routes_module
+        original_cipher = routes_module.current_vmk_cipher
+        
+        try:
+            key = Fernet.generate_key()
+            cipher = Fernet(key)
+            if hasattr(cipher, '_signing_key'):
+                cipher._signing_key = None
+            routes_module.current_vmk_cipher = cipher
+            cleanup_secrets()
+        finally:
+            routes_module.current_vmk_cipher = original_cipher
+    
+    def test_cleanup_secrets_with_cipher_no_encryption_key(self):
+        # test to cover branch: hasattr returns False or _encryption_key is None
+        from cryptography.fernet import Fernet
+        import passwordmanager.api.routes as routes_module
+        original_cipher = routes_module.current_vmk_cipher
+        
+        try:
+            key = Fernet.generate_key()
+            cipher = Fernet(key)
+            if hasattr(cipher, '_encryption_key'):
+                cipher._encryption_key = None
+            routes_module.current_vmk_cipher = cipher
+            cleanup_secrets()
+        finally:
+            routes_module.current_vmk_cipher = original_cipher
+    
+    def test_cleanup_secrets_with_cipher_no_keys(self):
+        # test to cover branches: both keys are None
+        from cryptography.fernet import Fernet
+        import passwordmanager.api.routes as routes_module
+        original_cipher = routes_module.current_vmk_cipher
+        
+        try:
+            key = Fernet.generate_key()
+            cipher = Fernet(key)
+            if hasattr(cipher, '_signing_key'):
+                cipher._signing_key = None
+            if hasattr(cipher, '_encryption_key'):
+                cipher._encryption_key = None
+            routes_module.current_vmk_cipher = cipher
+            cleanup_secrets()
+        finally:
+            routes_module.current_vmk_cipher = original_cipher
+    
+    def test_cleanup_secrets_with_cipher_no_attrs(self):
+        # test to cover branches: hasattr returns False for both attributes
+        import passwordmanager.api.routes as routes_module
+        original_cipher = routes_module.current_vmk_cipher
+        
+        class MockCipher:
+            pass
+        
+        try:
+            routes_module.current_vmk_cipher = MockCipher()
             cleanup_secrets()
         finally:
             routes_module.current_vmk_cipher = original_cipher

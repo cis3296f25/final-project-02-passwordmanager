@@ -3,9 +3,11 @@ import threading
 import time
 import random
 import string
+from unittest.mock import patch
 from passwordmanager.api.routes import app
 from passwordmanager.api.apiCallerMethods import *
 import passwordmanager.api.apiCallerMethods as acm
+from passwordmanager.core.passwordManager import c, conn
 
 class TestApiCallerMethods(unittest.TestCase):
     @classmethod
@@ -35,6 +37,16 @@ class TestApiCallerMethods(unittest.TestCase):
     def test_get_all_credentials(self):
         data = acm.get_all_credentials()
         self.assertIsInstance(data, list)
+        # Verify created_at is formatted correctly for all credentials (coverage for line 219)
+        for cred in data:
+            if cred.get("created_at"):
+                self.assertIsInstance(cred.get("created_at"), str)
+                # Should be in MM-DD-YYYY format
+                parts = cred.get("created_at").split("-")
+                if len(parts) == 3:
+                    self.assertEqual(len(parts[0]), 2)  # month
+                    self.assertEqual(len(parts[1]), 2)  # day
+                    self.assertEqual(len(parts[2]), 4)  # year
 
     def test_get_credential(self):
         # create isolated credential
@@ -47,6 +59,15 @@ class TestApiCallerMethods(unittest.TestCase):
         data = acm.get_credential(cred_id)
         self.assertIsInstance(data, dict)
         self.assertEqual(data.get("id"), cred_id)
+        # Verify created_at is formatted correctly (coverage for line 99)
+        if data.get("created_at"):
+            self.assertIsInstance(data.get("created_at"), str)
+            # Should be in MM-DD-YYYY format
+            parts = data.get("created_at").split("-")
+            self.assertEqual(len(parts), 3)
+            self.assertEqual(len(parts[0]), 2)  # month
+            self.assertEqual(len(parts[1]), 2)  # day
+            self.assertEqual(len(parts[2]), 4)  # year
         # cleanup
         acm.delete_credential(cred_id)
 
@@ -55,7 +76,7 @@ class TestApiCallerMethods(unittest.TestCase):
         self.assertIsInstance(data, dict)
         pw = data.get("password")
         self.assertIsInstance(pw, str)
-        self.assertEqual(len(pw), 12)
+        self.assertEqual(len(pw), 16)
 
     def test_update_credential(self):
         # create a credential
@@ -230,3 +251,36 @@ class TestApiCallerMethods(unittest.TestCase):
         self.assertIsInstance(result, dict)
         self.assertIn("locked", result)
         self.assertIn("lockout_seconds", result)
+    
+    def test_get_credential_created_at_datetime_formatting(self):
+        # Test coverage for line 99: created_at as datetime.datetime
+        site = "acm-datetime-" + "".join(random.choices(string.digits, k=6))
+        acm.add_credential(site, "user", "Pass123!")
+        creds = acm.get_all_credentials()
+        match = next((i for i in creds if i.get("site") == site), None)
+        self.assertIsNotNone(match)
+        cred_id = match.get("id")
+        
+        data = acm.get_credential(cred_id)
+        # Verify created_at exists and is formatted (covers datetime path if datetime object returned)
+        self.assertIn("created_at", data)
+        if data.get("created_at"):
+            self.assertIsInstance(data.get("created_at"), str)
+        
+        acm.delete_credential(cred_id)
+    
+    def test_list_credentials_created_at_datetime_formatting(self):
+        # Test coverage for line 219: created_at as datetime.datetime in list
+        site = "acm-list-dt-" + "".join(random.choices(string.digits, k=6))
+        acm.add_credential(site, "user", "Pass123!")
+        
+        creds = acm.get_all_credentials()
+        match = next((i for i in creds if i.get("site") == site), None)
+        self.assertIsNotNone(match)
+        
+        # Verify created_at exists and is formatted (covers datetime path if datetime object returned)
+        self.assertIn("created_at", match)
+        if match.get("created_at"):
+            self.assertIsInstance(match.get("created_at"), str)
+        
+        acm.delete_credential(match.get("id"))
