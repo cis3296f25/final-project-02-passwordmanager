@@ -30,7 +30,6 @@ class ChangePasswordWindow(QDialog):
         password_layout = QHBoxLayout()
         self.old_password_input = QLineEdit()
         self.old_password_input.setPlaceholderText("Old Password")
-        self.old_password_input.setEchoMode(QLineEdit.EchoMode.Password)
 
         password_layout.addWidget(self.old_password_input)
 
@@ -39,7 +38,6 @@ class ChangePasswordWindow(QDialog):
         # New password field on separate row
         self.new_password_input = QLineEdit()
         self.new_password_input.setPlaceholderText("New Password")
-        self.new_password_input.setEchoMode(QLineEdit.EchoMode.Password)
         form_layout.addRow("Enter New Password:", self.new_password_input)
         layout.addLayout(form_layout)
 
