@@ -30,6 +30,7 @@ class ChangePasswordWindow(QDialog):
         password_layout = QHBoxLayout()
         self.old_password_input = QLineEdit()
         self.old_password_input.setPlaceholderText("Old Password")
+        self.old_password_input.setEchoMode(QLineEdit.EchoMode.Password)
 
         password_layout.addWidget(self.old_password_input)
 
@@ -38,6 +39,7 @@ class ChangePasswordWindow(QDialog):
         # New password field on separate row
         self.new_password_input = QLineEdit()
         self.new_password_input.setPlaceholderText("New Password")
+        self.new_password_input.setEchoMode(QLineEdit.EchoMode.Password)
         form_layout.addRow("Enter New Password:", self.new_password_input)
         layout.addLayout(form_layout)
 
@@ -54,10 +56,13 @@ class ChangePasswordWindow(QDialog):
         
         self.setLayout(layout)
         
-        # Apply theme with current mode (not theme parameter)
+        # Apply theme with current mode
         theme_manager.apply_theme_to_window(self, theme_manager.current_mode)
-        
     
     def set_master_password(self):
         newPassword = self.new_password_input.text()
         apiCallerMethods.set_master_password(newPassword)
+    
+    def closeEvent(self, event):
+        theme_manager.unregister_window(self)
+        super().closeEvent(event)
