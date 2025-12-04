@@ -435,34 +435,48 @@ def _reset_lockout():
 # should be expanded on in the future
 @app.route("/account/password", methods=["PUT"])
 def change_master_password():
-    global vault_locked, current_user, current_vmk
+    global vault_locked, current_user, current_vmk, current_vmk_cipher
 
     if vault_locked or not current_user:
         return jsonify({"error": "not logged in"}), 401
 
     data = request.json or {}
+
+    old_password = data.get("old_password")
     new_password = data.get("new_password")
-    if not new_password:
+
+    if not old_password or not new_password:
         return jsonify({"error": "missing fields"}), 400
 
-    # load user kdf metadata
+    # load user kdf 
     c.execute(
-        "SELECT salt, kdf_params FROM user_metadata WHERE username = ?",
+        "SELECT wrapped_vmk, salt, kdf_params FROM user_metadata WHERE username = ?",
         (current_user,),
     )
     row = c.fetchone()
+    
     if not row:
         return jsonify({"error": "user not found"}), 404
 
-    salt, kdf_params_json = row
+    wrapped_vmk, salt, kdf_params_json = row
     params = json.loads(kdf_params_json)
 
-    new_wrap_key = derive_wrap_key(new_password, salt, params)
+    # verify old master password
+    try:
+        old_wrap_key = derive_wrap_key(old_password, salt, params)
+        attempted_vmk = unwrap_vmk(old_wrap_key, wrapped_vmk)
+    except Exception:
+        return jsonify({"error": "incorrect old password"}), 403
+    
+    # generate wrap key for new pswd
+    try:
+        new_wrap_key = derive_wrap_key(new_password, salt, params)
+        new_wrapped_vmk = wrap_vmk(new_wrap_key, current_vmk)
+    except Exception:
+        return jsonify({"error": "failed to rewrap vmk"}), 500
+    
 
-    # rewrap the existing vmk from the last login 
-    new_wrapped_vmk = wrap_vmk(new_wrap_key, current_vmk)
-
-    # store 
+    # store
     c.execute(
         "UPDATE user_metadata SET wrapped_vmk = ? WHERE username = ?",
         (new_wrapped_vmk, current_user),

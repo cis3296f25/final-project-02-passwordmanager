@@ -65,13 +65,12 @@ class TestVaultAPI(unittest.TestCase):
         old_pw = "old_master_pw"
         new_pw = "new_master_pw"
 
-
         self.client.post("/account/create",
-                         json={"username": username, "master_password": old_pw})
+                        json={"username": username, "master_password": old_pw})
 
         # login to dummy account with old_master_pw
         r = self.client.post("/account/login",
-                             json={"username": username, "master_password": old_pw})
+                            json={"username": username, "master_password": old_pw})
         self.assertEqual(r.status_code, 200)
 
         # get current wrapped vmk before change for comparison
@@ -80,13 +79,22 @@ class TestVaultAPI(unittest.TestCase):
         self.assertIsNotNone(row_before)
         wrapped_before = row_before[0]
 
-        # trying to change the master password without including a password parameter shuld return 400
+        # trying to change the master password without including required parameters should return 400
         bad = self.client.put("/account/password", json={})
         self.assertEqual(bad.status_code, 400)
 
+        # missing old_password should also return 400
+        bad2 = self.client.put("/account/password", json={"new_password": new_pw})
+        self.assertEqual(bad2.status_code, 400)
+
+        # incorrect old password should return 403
+        bad3 = self.client.put("/account/password",
+                            json={"old_password": "WRONG", "new_password": new_pw})
+        self.assertEqual(bad3.status_code, 403)
+
         # successful password change should return 200
         r = self.client.put("/account/password",
-                            json={"new_password": new_pw})
+                            json={"old_password": old_pw, "new_password": new_pw})
         self.assertEqual(r.status_code, 200)
         self.assertEqual(r.get_json().get("status"), "password updated")
 
@@ -102,14 +110,67 @@ class TestVaultAPI(unittest.TestCase):
         # login to dummy account with old password should fail
         self.client.post("/account/logout")
         r = self.client.post("/account/login",
-                             json={"username": username, "master_password": old_pw})
+                            json={"username": username, "master_password": old_pw})
         self.assertEqual(r.status_code, 401)
 
-        # login to dummy account with new password should return succeed
+        # login to dummy account with new password should succeed
         r = self.client.post("/account/login",
-                             json={"username": username, "master_password": new_pw})
+                            json={"username": username, "master_password": new_pw})
         self.assertEqual(r.status_code, 200)
         self.assertEqual(r.get_json().get("status"), "logged in")
+
+    # def test_account_password_change_flow(self):
+    #     # create a new user for this test. we don't have a method to delete accounts yet and
+    #     # there are no repeat usernames allowed, so for now username is a random string of length 50
+    #     username = ''.join(random.choices(string.ascii_letters + string.digits, k=50))
+    #     old_pw = "old_master_pw"
+    #     new_pw = "new_master_pw"
+
+
+    #     self.client.post("/account/create",
+    #                      json={"username": username, "master_password": old_pw})
+
+    #     # login to dummy account with old_master_pw
+    #     r = self.client.post("/account/login",
+    #                          json={"username": username, "master_password": old_pw})
+    #     self.assertEqual(r.status_code, 200)
+
+    #     # get current wrapped vmk before change for comparison
+    #     c.execute("SELECT wrapped_vmk FROM user_metadata WHERE username = ?", (username,))
+    #     row_before = c.fetchone()
+    #     self.assertIsNotNone(row_before)
+    #     wrapped_before = row_before[0]
+
+    #     # trying to change the master password without including a password parameter shuld return 400
+    #     bad = self.client.put("/account/password", json={})
+    #     self.assertEqual(bad.status_code, 400)
+
+    #     # successful password change should return 200
+    #     r = self.client.put("/account/password",
+    #                         json={"new_password": new_pw})
+    #     self.assertEqual(r.status_code, 200)
+    #     self.assertEqual(r.get_json().get("status"), "password updated")
+
+    #     # get the wrapped vmk again, it should be different now
+    #     c.execute("SELECT wrapped_vmk FROM user_metadata WHERE username = ?", (username,))
+    #     row_after = c.fetchone()
+    #     self.assertIsNotNone(row_after)
+    #     wrapped_after = row_after[0]
+
+    #     self.assertNotEqual(wrapped_before, wrapped_after,
+    #                         "wrapped VMK must change after password rotation")
+
+    #     # login to dummy account with old password should fail
+    #     self.client.post("/account/logout")
+    #     r = self.client.post("/account/login",
+    #                          json={"username": username, "master_password": old_pw})
+    #     self.assertEqual(r.status_code, 401)
+
+    #     # login to dummy account with new password should return succeed
+    #     r = self.client.post("/account/login",
+    #                          json={"username": username, "master_password": new_pw})
+    #     self.assertEqual(r.status_code, 200)
+    #     self.assertEqual(r.get_json().get("status"), "logged in")
 
 
     def test_per_user_encryption_distinct_ciphertexts(self):
@@ -429,7 +490,7 @@ class TestVaultAPI(unittest.TestCase):
         self.client.post("/account/login", json={"username": test_username, "master_password": test_password})
         c.execute("DELETE FROM user_metadata WHERE username = ?", (test_username,))
         conn.commit()
-        r = self.client.put("/account/password", json={"new_password": "newpass"})
+        r = self.client.put("/account/password", json={"new_password": "newpass", "old_password": test_password})
         self.assertEqual(r.status_code, 404)
         self.assertEqual(r.get_json().get("error"), "user not found")
         self.client.post("/account/login", json={"username":"unittest-user","master_password":"unittest-pass"})
@@ -464,3 +525,7 @@ class TestVaultAPI(unittest.TestCase):
         match = next((i for i in creds if i.get("site") == site and i.get("username") == username), None)
         if match:
             self.client.delete(f"/delete/{match.get('id')}")
+
+if __name__ == "__main__":
+    import unittest
+    unittest.main(verbosity=2)
