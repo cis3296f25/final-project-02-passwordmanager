@@ -145,19 +145,25 @@ class settingsDialog(QDialog):
         form_layout.addRow("Password:", self.change_password_button)
 
         # Export Section
-        export_layout = QHBoxLayout()
+        export_layout = QVBoxLayout()
+         
+        radio_layout = QHBoxLayout()
         self.export_json_radio = QRadioButton("JSON")
         self.export_csv_radio = QRadioButton("CSV")
         self.export_json_radio.setChecked(True)
         self.export_format_group = QButtonGroup(self)
         self.export_format_group.addButton(self.export_json_radio)
         self.export_format_group.addButton(self.export_csv_radio)
-        export_layout.addWidget(self.export_json_radio)
-        export_layout.addWidget(self.export_csv_radio)
+        radio_layout.addWidget(self.export_json_radio)
+        radio_layout.addWidget(self.export_csv_radio)
+        
+        export_layout.addLayout(radio_layout)
 
+        # Export button below the radio buttons
         self.export_button = QPushButton("Export")
         self.export_button.clicked.connect(self.handle_export)
         export_layout.addWidget(self.export_button)
+        
         form_layout.addRow("Export:", export_layout)
 
         # Import Section
