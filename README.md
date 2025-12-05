@@ -9,6 +9,15 @@
 # Overview
 Each password is encrypted with a master key before being saved in a local SQLite database, so it is protected even if someone accesses your files. The program can generate strong random passwords for new accounts, and you can add or get credentials through a simple local API. Everything runs on your computer without needing an internet connection. 
 
+<br></br>
+
+<div align="center">
+ 
+| Login | Dashboard | 
+| :---:         |     :---:      |     
+| <img width="403" height="285" alt="Screenshot 2025-12-04 at 17 00 16" src="https://github.com/user-attachments/assets/50e2ffbb-3e46-4ae4-bfb0-e23b3bece241" />   | <img width="493" height="687" alt="Screenshot 2025-12-04 at 19 38 44" src="https://github.com/user-attachments/assets/c71db654-e1da-4eb8-9edc-6f27fc78af10" />     |
+</div>
+
 # Security & Encryption Architecture
 
 This password manager uses industry-standard encryption practices to ensure your passwords remain secure even if someone gains access to your database file. Here's how your data is protected:
@@ -190,6 +199,12 @@ graph TB
 
 This diagram shows how the password manager is built. The GUI (blue boxes) is what users see - login screen, main window, dialogs for adding/editing passwords. When you do something in the GUI, it sends HTTP requests through the API layer (red boxes) to the core logic (purple boxes), which handles encryption and saves everything to the database. Even though it's a desktop app, we use a REST API internally so the GUI doesn't have to know about encryption or databases - it just makes requests and gets responses back. The whole thing starts from main.py which fires up both the web server and the GUI.
 
+# Contributors
+<a href="https://github.com/cis3296f25/PasswordManager/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=cis3296f25/PasswordManager" />
+</a>
+
+Made with [contrib.rocks](https://contrib.rocks).
 
 # How to contribute
 Follow this project board to know the latest status of the project: [https://github.com/orgs/cis3296f25/projects/71]  
