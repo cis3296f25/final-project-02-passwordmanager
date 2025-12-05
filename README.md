@@ -9,6 +9,42 @@
 # Overview
 Each password is encrypted with a master key before being saved in a local SQLite database, so it is protected even if someone accesses your files. The program can generate strong random passwords for new accounts, and you can add or get credentials through a simple local API. Everything runs on your computer without needing an internet connection. 
 
+# Security & Encryption Architecture
+
+This password manager uses industry-standard encryption practices to ensure your passwords remain secure even if someone gains access to your database file. Here's how your data is protected:
+
+## Two-Layer Encryption Model
+
+### Layer 1: Master Password Protection
+Your master password is **never stored** in the database. Instead, it's used to unlock a Vault Master Key (VMK) that encrypts all your passwords.
+
+**Account Creation Process:**
+1. **Random Salt Generation**: A unique 16-byte random salt is generated for each account using cryptographically secure randomness (`os.urandom`). This prevents rainbow table attacks (even if two users have the same master password, their encryption keys will be different).
+2. **Key Derivation**: Your master password is combined with the salt and processed through **Argon2id**, a memory-hard key derivation function. It converts your password into a 32-byte wrap key using:
+   - Time cost: 3 iterations
+   - Memory cost: 64 MiB
+   - Parallelism: 2 threads
+   - This makes brute-force attacks computationally expensive (requiring significant time and memory).
+3. **VMK Generation**: A random 32-byte (256-bit) Vault Master Key (VMK) is generated using Fernet's secure key generation. This key will actually encrypt all your stored passwords.
+4. **VMK Wrapping**: The VMK is encrypted (wrapped) using the wrap key derived from your master password. The wrapped VMK, salt, and KDF parameters are stored in the database. The VMK itself is never stored in plaintext.
+
+**What's Stored:**
+- Your username
+- Encrypted VMK (can only be decrypted with your master password)
+- Random salt (unique per account)
+- KDF algorithm name and parameters (Argon2id settings)  
+
+**What's NOT Stored:**
+- Your master password (not even a hash)
+- The VMK in plaintext
+- Any passwords in plaintext
+
+### Layer 2: Password Encryption
+When you save a password to the vault:
+
+1. **Encryption**: Each password is encrypted using the VMK via Fernet symmetric encryption (AES-128 in CBC mode with HMAC authentication). Fernet provides authenticated encryption, ensuring both confidentiality and integrity.
+2. **Storage**: Only the encrypted password (binary blob) is stored in the database along with the site name and username.
+
 # How to run
 ## To run the latest release
 1. Go to the 'Releases' page to the right
