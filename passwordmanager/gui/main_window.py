@@ -24,8 +24,8 @@ class MainWindow(QMainWindow):
         # set window
         self.setWindowTitle(Strings.APP_NAME)
         self.setWindowIcon(QIcon(Strings.WINDOW_ICON_PATH))
-        self.setGeometry(200, 200, 600, 525)  # x, y, width, height 
-        self.setMinimumWidth(620)
+        self.setGeometry(200, 200, 640, 525)  # x, y, width, height 
+        self.setMinimumWidth(640)
         self.setMinimumHeight(650)
 
         # set central widget (similar to panels in jpanel)

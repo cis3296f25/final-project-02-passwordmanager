@@ -95,11 +95,9 @@ def get_credential(cred_id):
 
         # Format created_at to MM-DD-YYYY
         created_at_str = None
-        if isinstance(created_at, datetime.datetime):
-            created_at_str = created_at.strftime("%m-%d-%Y")
-        else:
-            parsed = datetime.datetime.fromisoformat(str(created_at))
-            created_at_str = parsed.strftime("%m-%d-%Y")
+        if created_at is not None:
+            if isinstance(created_at, datetime.datetime):
+                created_at_str = created_at.strftime("%m-%d-%Y")
 
         return jsonify({
             "id": cred_id,
@@ -215,14 +213,9 @@ def list_credentials():
 
             # normalize created_at to MM-DD-YYYY
             created_at_str = None
-            if isinstance(created_at, datetime.datetime):
-                created_at_str = created_at.strftime("%m-%d-%Y")
-            else:
-                try:
-                    parsed = datetime.datetime.fromisoformat(str(created_at))
-                    created_at_str = parsed.strftime("%m-%d-%Y")
-                except Exception:
-                    created_at_str = str(created_at) if created_at else None
+            if created_at is not None:
+                if isinstance(created_at, datetime.datetime):
+                    created_at_str = created_at.strftime("%m-%d-%Y")
 
             credentials_list.append({
                 "id": cred_id,
@@ -430,9 +423,6 @@ def _reset_lockout():
     conn.commit()
 
 # changes a users master password assuming they're already logged in.
-#
-# this currently does NOT require any validation of their existing password and 
-# should be expanded on in the future
 @app.route("/account/password", methods=["PUT"])
 def change_master_password():
     global vault_locked, current_user, current_vmk, current_vmk_cipher
@@ -469,13 +459,9 @@ def change_master_password():
         return jsonify({"error": "incorrect old password"}), 403
     
     # generate wrap key for new pswd
-    try:
-        new_wrap_key = derive_wrap_key(new_password, salt, params)
-        new_wrapped_vmk = wrap_vmk(new_wrap_key, current_vmk)
-    except Exception:
-        return jsonify({"error": "failed to rewrap vmk"}), 500
+    new_wrap_key = derive_wrap_key(new_password, salt, params)
+    new_wrapped_vmk = wrap_vmk(new_wrap_key, current_vmk)
     
-
     # store
     c.execute(
         "UPDATE user_metadata SET wrapped_vmk = ? WHERE username = ?",

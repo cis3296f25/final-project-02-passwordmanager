@@ -305,7 +305,7 @@ class ListCredentialsWidget(QWidget):
         # Password display button for top row 
         password_copy_button = QPushButton("••••••••••••")
         password_copy_button.setToolTip("Click to copy password")
-        password_copy_button.setFixedWidth(160)
+        password_copy_button.setFixedWidth(180)
         password_copy_button.setFixedHeight(btn_height)
         password_copy_button.setStyleSheet(f"""
             QPushButton {{
