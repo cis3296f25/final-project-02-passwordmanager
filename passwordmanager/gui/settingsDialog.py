@@ -41,8 +41,8 @@ class settingsDialog(QDialog):
 
         # Window setup
         self.setWindowTitle("Settings")
-        self.setMinimumWidth(400)
-        self.setMinimumHeight(350)
+        self.setMinimumWidth(448)
+        self.setMinimumHeight(392)
 
         # Main layout
         layout = QVBoxLayout()

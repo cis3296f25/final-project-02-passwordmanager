@@ -87,8 +87,8 @@ class EditCredentialsDialog(QDialog):
             username = self.username_input.text()
             password = self.password_input.text()
 
-            response = apiCallerMethods.update_credential(self.credId, site, username, password)
-            if "status" in response and response["status"] == "updated":
+            response, status_code = apiCallerMethods.update_credential(self.credId, site, username, password)
+            if status_code == 200 and "status" in response and response["status"] == "updated":
                 self.status_label.setText("Credential updated successfully.")
                 self.close()
             else:

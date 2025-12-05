@@ -88,8 +88,9 @@ class TestApiCallerMethods(unittest.TestCase):
         self.assertIsNotNone(match, "credential not found after creation")
         cred_id = match.get("id")
         # exercise PUT update and response.json()
-        result = acm.update_credential(cred_id, site, username, "NewPass123!")
+        result, status_code = acm.update_credential(cred_id, site, username, "NewPass123!")
         self.assertIsInstance(result, dict)
+        self.assertEqual(status_code, 200)
         self.assertEqual(result.get("status"), "updated")
         self.assertEqual(result.get("id"), cred_id)
         # verify update took effect
@@ -137,9 +138,15 @@ class TestApiCallerMethods(unittest.TestCase):
 
     def test_set_master_password(self):
         new_password = "NewMasterPass123!" + "".join(random.choices(string.ascii_letters + string.digits, k=4))
-        result = acm.set_master_password(new_password)
-        self.assertIsInstance(result, dict)
-        self.assertEqual(result.get("status"), "password updated")
+        old_password = self.password  # Use the current password from setUpClass
+        result = acm.set_master_password(new_password, old_password)
+        self.assertEqual(result.status_code, 200)
+        result_json = result.json()
+        self.assertIsInstance(result_json, dict)
+        self.assertEqual(result_json.get("status"), "password updated")
+        # Restore original password so subsequent tests aren't affected
+        restore_result = acm.set_master_password(old_password, new_password)
+        self.assertEqual(restore_result.status_code, 200)
 
     def test_check_duplicate_credential(self):
         site = "acm-dup-" + "".join(random.choices(string.digits, k=6))

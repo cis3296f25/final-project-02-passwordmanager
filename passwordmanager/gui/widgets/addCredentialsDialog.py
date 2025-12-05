@@ -169,7 +169,7 @@ class AddCredentialsDialog(QDialog):
         else:
             self.strength_label.setText("Password strength: Strong")
             self.strength_label.setStyleSheet("color: lightgreen;")
-
+        
     def closeEvent(self, event):
         theme_manager.unregister_window(self)
         super().closeEvent(event)
