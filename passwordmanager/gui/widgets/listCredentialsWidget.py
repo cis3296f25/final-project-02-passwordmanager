@@ -115,8 +115,10 @@ class ListCredentialsWidget(QWidget):
 
         # inner rectangular container for credentials cards
         self.credentials_container = QWidget()
+        self.credentials_container.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
         self.credentials_layout = QVBoxLayout(self.credentials_container)
         self.credentials_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+        self.credentials_layout.setContentsMargins(10, 0, 10, 0)  # Left and right margins
         self.scroll_area.setWidget(self.credentials_container)
 
         self.parentWidget = parent
@@ -257,28 +259,29 @@ class ListCredentialsWidget(QWidget):
         top_row.setContentsMargins(12, 6, 12, 6)
         top_row.setSpacing(10)
         
-        # Site label
+        # Site label 
         site = QLabel(f"{cred.get('site','')}")
         site.setObjectName("site_label")
         site.setStyleSheet(f"color: {colors['text']}; font-size: 13px;")
-        site.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
+        site.setFixedWidth(160)
+        site.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Preferred)
         site.setWordWrap(False)
         
-        # Username label
+        # Username label 
         username = QLabel(f"{cred.get('username','')}")
         username.setObjectName("username_label")
         username.setStyleSheet(f"color: {colors['text']}; font-size: 13px;")
-        username.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
+        username.setFixedWidth(160)
+        username.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Preferred)
         username.setWordWrap(False)
         
         # Password text (needed for both top row and dropdown)
         password_text = cred.get("password", "")
         
-        # Password display button for top row
+        # Password display button for top row 
         password_copy_button = QPushButton("••••••••••••")
         password_copy_button.setToolTip("Click to copy password")
-        password_copy_button.setMinimumWidth(100)
-        password_copy_button.setMaximumWidth(150)
+        password_copy_button.setFixedWidth(160)
         password_copy_button.setFixedHeight(btn_height)
         password_copy_button.setStyleSheet(f"""
             QPushButton {{

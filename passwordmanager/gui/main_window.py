@@ -24,9 +24,9 @@ class MainWindow(QMainWindow):
         # set window
         self.setWindowTitle(Strings.APP_NAME)
         self.setWindowIcon(QIcon(Strings.WINDOW_ICON_PATH))
-        self.setGeometry(200, 200, 475, 400)  # x, y, width, height
-        self.setMinimumWidth(520)
-        self.setMinimumHeight(575)
+        self.setGeometry(200, 200, 600, 525)  # x, y, width, height 
+        self.setMinimumWidth(620)
+        self.setMinimumHeight(650)
 
         # set central widget (similar to panels in jpanel)
         central = QWidget()
@@ -115,16 +115,6 @@ class MainWindow(QMainWindow):
             self.font().pointSizeF() or 11.0
         )
         target_size = max(8.0, base_size * float(scale))
-
-    def _apply(widget: QWidget):
-        f = QFont(widget.font())
-        f.setPointSizeF(target_size)
-        widget.setFont(f)
-
-        apply(self)
-        for child in self.findChildren(QWidget):
-            apply(child)
-
         
     def closeEvent(self, event):
         """Clean up when window is closed"""
