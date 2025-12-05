@@ -262,7 +262,7 @@ class ListCredentialsWidget(QWidget):
         # Site label 
         site = QLabel(f"{cred.get('site','')}")
         site.setObjectName("site_label")
-        site.setStyleSheet(f"color: {colors['text']}; font-size: 13px;")
+        site.setStyleSheet(f"color: {colors['text']}; font-size: {password_size}px;")
         site.setFixedWidth(160)
         site.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Preferred)
         site.setWordWrap(False)
