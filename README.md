@@ -9,6 +9,15 @@
 # Overview
 Each password is encrypted with a master key before being saved in a local SQLite database, so it is protected even if someone accesses your files. The program can generate strong random passwords for new accounts, and you can add or get credentials through a simple local API. Everything runs on your computer without needing an internet connection. 
 
+<br></br>
+
+<div align="center">
+ 
+| Login | Dashboard | 
+| :---:         |     :---:      |     
+| <img width="403" height="285" alt="Screenshot 2025-12-04 at 17 00 16" src="https://github.com/user-attachments/assets/50e2ffbb-3e46-4ae4-bfb0-e23b3bece241" />   | <img width="493" height="687" alt="Screenshot 2025-12-04 at 19 38 44" src="https://github.com/user-attachments/assets/c71db654-e1da-4eb8-9edc-6f27fc78af10" />     |
+</div>
+
 # How to run
 ## To run the latest release
 1. Go to the 'Releases' page to the right
