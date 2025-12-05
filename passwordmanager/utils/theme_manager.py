@@ -498,6 +498,8 @@ class ThemeManager:
                 window.filter_button.setStyleSheet(self.get_small_button_style(mode, theme))
             if hasattr(window, 'settings_button'):
                 window.settings_button.setStyleSheet(self.get_small_button_style(mode, theme))
+            if hasattr(window, 'show_all_button'):
+                window.show_all_button.setStyleSheet(self.get_small_button_style(mode, theme))
             
             if hasattr(window, 'search_bar'):
                 window.search_bar.setStyleSheet(f"""
