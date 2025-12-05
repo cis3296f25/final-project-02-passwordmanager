@@ -115,8 +115,10 @@ class ListCredentialsWidget(QWidget):
 
         # inner rectangular container for credentials cards
         self.credentials_container = QWidget()
+        self.credentials_container.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
         self.credentials_layout = QVBoxLayout(self.credentials_container)
         self.credentials_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+        self.credentials_layout.setContentsMargins(10, 0, 10, 0)  # Left and right margins
         self.scroll_area.setWidget(self.credentials_container)
 
         self.parentWidget = parent
@@ -128,7 +130,6 @@ class ListCredentialsWidget(QWidget):
         """Fetch all credentials from the API and rebuild the list with current filters/sort."""
         # reset stored credentials
         self.all_credentials = []
-        # reset password visibility tracking
         self.password_buttons = []
 
         # clear all previous cards
@@ -164,6 +165,8 @@ class ListCredentialsWidget(QWidget):
         Apply current search text and sort selection to self.all_credentials,
         then rebuild the visible cards.
         """
+        self.password_buttons = []
+        
         # clear current
         for i in reversed(range(self.credentials_layout.count())):
             widget = self.credentials_layout.itemAt(i).widget()
@@ -209,6 +212,9 @@ class ListCredentialsWidget(QWidget):
         # 3) Rebuild cards
         for cred in creds:
             self.add_credential_card(cred)
+        
+        # 4) Update show all button state based on stored visibility
+        self.update_show_all_button_state()
 
     # create a rectangular card for one credential
     def add_credential_card(self, cred):
@@ -253,28 +259,29 @@ class ListCredentialsWidget(QWidget):
         top_row.setContentsMargins(12, 6, 12, 6)
         top_row.setSpacing(10)
         
-        # Site label
+        # Site label 
         site = QLabel(f"{cred.get('site','')}")
         site.setObjectName("site_label")
         site.setStyleSheet(f"color: {colors['text']}; font-size: 13px;")
-        site.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
+        site.setFixedWidth(160)
+        site.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Preferred)
         site.setWordWrap(False)
         
-        # Username label
+        # Username label 
         username = QLabel(f"{cred.get('username','')}")
         username.setObjectName("username_label")
         username.setStyleSheet(f"color: {colors['text']}; font-size: 13px;")
-        username.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
+        username.setFixedWidth(160)
+        username.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Preferred)
         username.setWordWrap(False)
         
         # Password text (needed for both top row and dropdown)
         password_text = cred.get("password", "")
         
-        # Password display button for top row
+        # Password display button for top row 
         password_copy_button = QPushButton("••••••••••••")
         password_copy_button.setToolTip("Click to copy password")
-        password_copy_button.setMinimumWidth(100)
-        password_copy_button.setMaximumWidth(150)
+        password_copy_button.setFixedWidth(160)
         password_copy_button.setFixedHeight(btn_height)
         password_copy_button.setStyleSheet(f"""
             QPushButton {{
@@ -407,7 +414,18 @@ class ListCredentialsWidget(QWidget):
         """
         visual_button.setStyleSheet(button_style + tooltip_style)
         
-        is_visible = {"state": False}
+        # Use global show all state to set initial visibility
+        is_visible = {"state": self.all_passwords_visible}
+        
+        # Set initial state based on global state
+        if self.all_passwords_visible:
+            password_copy_button.setText(password_text)
+            visual_button.setIcon(self.hide_icon)
+            visual_button.setToolTip("Hide password")
+        else:
+            password_copy_button.setText("••••••••••••")
+            visual_button.setIcon(self.show_icon)
+            visual_button.setToolTip("Show password")
         
         def toggle_visual():
             if is_visible["state"]:
@@ -420,7 +438,6 @@ class ListCredentialsWidget(QWidget):
                 visual_button.setIcon(self.hide_icon)
                 visual_button.setToolTip("Hide password")
                 is_visible["state"] = True
-            # Update show all button state
             self.update_show_all_button_state()
         
         visual_button.clicked.connect(toggle_visual)
@@ -589,17 +606,31 @@ class ListCredentialsWidget(QWidget):
         self.filter_menu.exec(button_global_pos)
     
     def toggle_show_all_passwords(self):
-        """Toggle visibility of all passwords at once."""
+        # Toggle global state
+        self.all_passwords_visible = not self.all_passwords_visible
+        new_state = self.all_passwords_visible
+        
         if not self.password_buttons:
+            self.update_show_all_button_state()
             return
         
-        # Determine new state: if all are visible, hide all; otherwise show all
-        all_visible = all(p["is_visible"]["state"] for p in self.password_buttons)
-        new_state = not all_visible
-        
-        # Update all passwords directly
+        valid_buttons = []
         for p in self.password_buttons:
-            if p["is_visible"]["state"] != new_state:
+            try:
+                _ = p["button"].isVisible()
+                _ = p["password_copy_button"].isVisible()
+                valid_buttons.append(p)
+            except RuntimeError:
+                continue
+        
+        if not valid_buttons:
+            self.password_buttons = []
+            self.update_show_all_button_state()
+            return
+        
+        # Update all visible passwords to match global state
+        for p in valid_buttons:
+            try:
                 p["is_visible"]["state"] = new_state
                 if new_state:
                     # Show password
@@ -611,40 +642,19 @@ class ListCredentialsWidget(QWidget):
                     p["password_copy_button"].setText("••••••••••••")
                     p["button"].setIcon(self.show_icon)
                     p["button"].setToolTip("Show password")
+            except RuntimeError:
+                continue
         
-        self.all_passwords_visible = new_state
+        self.password_buttons = valid_buttons
+        
         self.update_show_all_button_state()
     
     def update_show_all_button_state(self):
-        """Update the show all button icon and tooltip based on current password visibility states."""
-        if not self.password_buttons:
-            self.show_all_button.setIcon(self.show_icon)
-            self.show_all_button.setToolTip("Show all passwords")
-            self.all_passwords_visible = False
-            return
-        
-        # Count visible passwords
-        visible_count = sum(1 for p in self.password_buttons if p["is_visible"]["state"])
-        total_count = len(self.password_buttons)
-        
-        if visible_count == total_count:
-            # All passwords are visible
+        """Update the show all button icon and tooltip based on global visibility state."""
+        # Just reflect the global state - this is the source of truth
+        if self.all_passwords_visible:
             self.show_all_button.setIcon(self.hide_icon)
             self.show_all_button.setToolTip("Hide all passwords")
-            self.all_passwords_visible = True
-        elif visible_count == 0:
-            # All passwords are hidden
+        else:
             self.show_all_button.setIcon(self.show_icon)
             self.show_all_button.setToolTip("Show all passwords")
-            self.all_passwords_visible = False
-        else:
-            # Mixed state - if we previously showed all, keep it as "hide all"
-            # Otherwise show "show all"
-            if self.all_passwords_visible:
-                # Was in "show all" state, keep as "hide all" until all are hidden
-                self.show_all_button.setIcon(self.hide_icon)
-                self.show_all_button.setToolTip("Hide all passwords")
-            else:
-                # Was in "hide all" or initial state, show "show all"
-                self.show_all_button.setIcon(self.show_icon)
-                self.show_all_button.setToolTip("Show all passwords")
