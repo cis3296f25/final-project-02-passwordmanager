@@ -267,13 +267,37 @@ class ListCredentialsWidget(QWidget):
         site.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Preferred)
         site.setWordWrap(False)
         
-        # Username label 
-        username = QLabel(f"{cred.get('username','')}")
-        username.setObjectName("username_label")
-        username.setStyleSheet(f"color: {colors['text']}; font-size: 13px;")
-        username.setFixedWidth(160)
-        username.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Preferred)
-        username.setWordWrap(False)
+        # Username label
+        username_copy_button = QPushButton(f"{cred.get('username','')}")
+        username_copy_button.setObjectName("username_label")
+        username_copy_button.setToolTip("Click to copy username")
+        username_copy_button.setFixedWidth(160)
+        username_copy_button.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Preferred)
+        username_copy_button.setFixedHeight(btn_height)
+
+        username_copy_button.setStyleSheet(f"""
+            QPushButton {{
+                color: {colors['text']};
+                font-size: {password_size}px;
+                text-align: left;
+                padding-left: 8px;
+                border: none;
+                background-color: transparent;
+            }}
+            QPushButton:hover {{
+                background-color: {colors['pressed_card_bg']};
+                color: {colors['text']};
+            }}
+            QPushButton:pressed {{
+                border: 2px solid {colors['card_bg']};
+            }}
+        """)
+
+        # Connect username button click to copy
+        username_text = cred.get('username', '')
+        username_copy_button.clicked.connect(
+            lambda _, u=username_text: self.copy_to_clipboard(u, username_copy_button)
+        )
         
         # Password text (needed for both top row and dropdown)
         password_text = cred.get("password", "")
@@ -324,7 +348,7 @@ class ListCredentialsWidget(QWidget):
         
         # Add widgets to top row: site | username | password | arrow
         top_row.addWidget(site)
-        top_row.addWidget(username)
+        top_row.addWidget(username_copy_button)
         top_row.addWidget(password_copy_button)
         top_row.addWidget(dropdown_btn)
         
