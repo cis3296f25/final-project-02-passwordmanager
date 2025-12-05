@@ -21,6 +21,10 @@ class Strings:
     CHECK_ICON_PATH = get_resource_path("resources/images/checkButtonIcon.png")
     SETTINGS_ICON_PATH = get_resource_path("resources/images/settingsIcon.png")
     FILTER_ICON_PATH = get_resource_path("resources/images/filterIcon.png")
+    HIDE_PASSWORD_ICON_PATH = get_resource_path("resources/images/hidePasswordIcon.png")
+    VIEW_PASSWORD_ICON_PATH = get_resource_path("resources/images/viewPasswordIcon.png")
+
+
     
     # style sheets:
     LARGE_BUTTON_STYLE = f"""

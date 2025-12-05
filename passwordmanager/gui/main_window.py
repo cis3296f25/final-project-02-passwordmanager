@@ -3,7 +3,7 @@ from PyQt6.QtWidgets import (
     QDialog, QLineEdit, QFormLayout, QHBoxLayout,
     QTableWidget, QTableWidgetItem, QHeaderView
 )
-from PyQt6.QtCore import Qt, QPoint
+from PyQt6.QtCore import Qt, QPoint, QSettings
 from PyQt6.QtGui import QFont, QIcon
 import sys
 from passwordmanager.api import apiCallerMethods
@@ -24,9 +24,9 @@ class MainWindow(QMainWindow):
         # set window
         self.setWindowTitle(Strings.APP_NAME)
         self.setWindowIcon(QIcon(Strings.WINDOW_ICON_PATH))
-        self.setGeometry(200, 200, 475, 400)  # x, y, width, height
-        self.setMinimumWidth(520)
-        self.setMinimumHeight(575)
+        self.setGeometry(200, 200, 600, 525)  # x, y, width, height 
+        self.setMinimumWidth(620)
+        self.setMinimumHeight(650)
 
         # set central widget (similar to panels in jpanel)
         central = QWidget()
@@ -57,6 +57,64 @@ class MainWindow(QMainWindow):
         
         # Apply initial theme after all widgets are created
         theme_manager.apply_theme_to_window(self, theme_manager.current_mode)
+
+         # --- Apply persisted text size on startup ---
+        settings = QSettings("OfflinePasswordManager", "OfflinePasswordManager")
+
+        # Slider index persisted by settingsDialog: 0=Small,1=Medium,2=Large
+        saved_index = settings.value("display_index", 1, type=int)
+
+        # Must match settingsDialog.display_scales
+        display_scales = {
+            0: 0.9,
+            1: 1.15,
+            2: 1.40,
+        }
+        scale = display_scales.get(saved_index, 1.15)
+
+        # Ensure base_point_size exists on theme_manager (same logic as settingsDialog)
+        if not hasattr(theme_manager, "base_point_size"):
+            app = QApplication.instance()
+            base_font = app.font() if app is not None else self.font()
+            theme_manager.base_point_size = base_font.pointSizeF() or 11.0
+
+        base_point_size = theme_manager.base_point_size
+        target_size = max(8.0, base_point_size * scale)
+
+        # Expose scale globally
+        theme_manager.display_scale = scale
+
+        # Apply to main window and its children
+        f = QFont(self.font())
+        f.setPointSizeF(target_size)
+        self.setFont(f)
+        for child in self.findChildren(QWidget):
+            child_font = QFont(child.font())
+            child_font.setPointSizeF(target_size)
+            child.setFont(child_font)
+        # --- end persisted text size ---
+
+
+         # Apply saved text size (Small / Medium / Large)
+        self.apply_saved_display_scale()
+
+
+    def apply_saved_display_scale(self):
+        """
+        Read the saved display scale (Small/Medium/Large) and apply it
+        to this window and all its children once on startup.
+        """
+        settings = QSettings("OfflinePasswordManager", "OfflinePasswordManager")
+        scale = settings.value("display_scale", 1.0, type=float)
+
+        # Use the shared base size the settings dialog stored on theme_manager,
+        # fall back to the current font if it isn't there yet.
+        base_size = getattr(
+            theme_manager,
+            "base_point_size",
+            self.font().pointSizeF() or 11.0
+        )
+        target_size = max(8.0, base_size * float(scale))
         
     def closeEvent(self, event):
         """Clean up when window is closed"""

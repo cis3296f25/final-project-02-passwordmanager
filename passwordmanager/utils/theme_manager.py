@@ -462,6 +462,20 @@ class ThemeManager:
                 """)
                 
         elif window_class_name == "ListCredentialsWidget":
+            # Apply tooltip styling globally - simple inline approach
+            tooltip_style = f"""
+            QToolTip {{
+                background-color: {colors['card_bg']};
+                color: {colors['text']};
+                border: 1px solid {colors['accent']};
+                padding: 4px;
+            }}
+            """
+            from PyQt6.QtWidgets import QApplication
+            app = QApplication.instance()
+            if app:
+                app.setStyleSheet(app.styleSheet() + tooltip_style)
+            
             window.setStyleSheet(f"""
             QWidget {{ {base_style} }}
             """)

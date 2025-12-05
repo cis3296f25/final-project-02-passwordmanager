@@ -57,8 +57,7 @@ def update_credential(cred_id, new_site, new_username, new_password):
         "username": new_username,
         "password": new_password
     })
-    return response.json()
-
+    return response.json(), response.status_code
 # account endpoints
 def account_create(username, master_password):
     response = requests.post(f"{BASE_URL}/account/create", json={
@@ -78,11 +77,12 @@ def account_logout():
     response = requests.post(f"{BASE_URL}/account/logout")
     return response.json()
 
-def set_master_password(new_password):
+def set_master_password(new_password, old_password):
     response = requests.put(f"{BASE_URL}/account/password", json={
-        "new_password": new_password
+        "new_password": new_password,
+        "old_password": old_password
     })
-    return response.json()
+    return response
 
 def get_status():
     response = requests.get(f"{BASE_URL}/status")

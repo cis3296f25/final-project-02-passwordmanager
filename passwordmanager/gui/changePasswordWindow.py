@@ -41,6 +41,11 @@ class ChangePasswordWindow(QDialog):
         form_layout.addRow("Enter New Password:", self.new_password_input)
         layout.addLayout(form_layout)
 
+        # status
+        self.status = QLabel("")
+        self.status.setWordWrap(True)
+        form_layout.addWidget(self.status)
+
         # Submit button
         button_layout = QHBoxLayout()
 
@@ -54,10 +59,23 @@ class ChangePasswordWindow(QDialog):
         
         self.setLayout(layout)
         
-        # Apply theme with current mode (not theme parameter)
+        # Apply theme with current mode
         theme_manager.apply_theme_to_window(self, theme_manager.current_mode)
-        
     
     def set_master_password(self):
+        oldPassword = self.old_password_input.text()
         newPassword = self.new_password_input.text()
-        apiCallerMethods.set_master_password(newPassword)
+
+        response = apiCallerMethods.set_master_password(newPassword, oldPassword)
+
+        if response.status_code == 200:
+            self.status.setText("Changed master password!")
+            self.status.setStyleSheet("color: green;")
+            self.accept()
+        else:
+            self.status.setText("Incorrect old password")
+            self.status.setStyleSheet("color: red;")
+    
+    def closeEvent(self, event):
+        theme_manager.unregister_window(self)
+        super().closeEvent(event)
