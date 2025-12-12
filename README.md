@@ -199,6 +199,66 @@ graph TB
 
 This diagram shows how the password manager is built. The GUI (blue boxes) is what users see - login screen, main window, dialogs for adding/editing passwords. When you do something in the GUI, it sends HTTP requests through the API layer (red boxes) to the core logic (purple boxes), which handles encryption and saves everything to the database. Even though it's a desktop app, we use a REST API internally so the GUI doesn't have to know about encryption or databases - it just makes requests and gets responses back. The whole thing starts from main.py which fires up both the web server and the GUI.
 
+# Sequence Diagram
+```mermaid
+sequenceDiagram
+
+title Create Account Sequence
+
+activate main.py
+main.py->Flask Server: Start server thread (port 5000)
+activate Flask Server
+main.py->LoginDialog: Create login dialog
+activate LoginDialog
+
+LoginDialog->apiCallerMethods: account_create(username, password)
+deactivate LoginDialog
+activate apiCallerMethods
+apiCallerMethods->Flask Server: POST /account/create\n{username, master_password}
+deactivate apiCallerMethods
+
+Flask Server->Flask Server: Validate input fields
+Flask Server->Database: Check for duplicate username
+activate Database
+Database-->>Flask Server: Username available
+deactivate Database
+
+Flask Server->kdf: default_kdf_params()
+activate kdf
+kdf-->>Flask Server: KDF parameters
+deactivate kdf
+
+Flask Server->Flask Server: Generate random salt
+Flask Server->kdf: derive_wrap_key(master_password, salt, params)
+activate kdf
+kdf-->>Flask Server: Wrap key
+deactivate kdf
+
+Flask Server->vmk: generate_vmk()
+activate vmk
+vmk-->>Flask Server: VMK (vault master key)
+deactivate vmk
+
+Flask Server->vmk: wrap_vmk(wrap_key, vmk)
+activate vmk
+vmk-->>Flask Server: Wrapped VMK
+deactivate vmk
+
+Flask Server->Database: INSERT user_metadata\n(username, wrapped_vmk, salt, kdf, kdf_params)
+activate Database
+Database-->>Flask Server: Success
+deactivate Database
+
+Flask Server-->>LoginDialog: {status: "account created"}
+activate LoginDialog
+
+LoginDialog->LoginDialog: Display "Account created. Logging in..."
+deactivate LoginDialog
+
+```
+
+This sequence diagram shows what happens when a user creates a new account. The application starts with main.py launching the Flask server and creating the login dialog. When the user clicks "Create Account", the login dialog sends the username and password through the API layer to the Flask server, which validates the input and checks for duplicate usernames. The server then begins the encryption setup: it gets KDF parameters (key derivation function settings like memory cost and time cost for Argon2id), generates a random salt (unique random bytes to prevent rainbow table attacks), and derives a wrap key from the user's password using the salt and KDF params (this converts the password into a proper encryption key). Next, the server generates a VMK (vault master key - a random encryption key that will actually encrypt all the user's passwords), wraps the VMK with the wrap key (encrypts the VMK so it can only be unlocked with the user's password), and saves the username, wrapped VMK, salt, and KDF parameters to the database. Once the account is successfully created, the response flows back to the login dialog which displays a confirmation message to the user.
+
 # Contributors
 <a href="https://github.com/cis3296f25/PasswordManager/graphs/contributors">
   <img src="https://contrib.rocks/image?repo=cis3296f25/PasswordManager" />
